@@ -29,7 +29,7 @@
   #app { position: relative; width: 100vw; height: 100vh; }
 
   #canvasHost { position: absolute; inset: 0; }
-  canvas#three { display: block; width: 100%; height: 100%; }
+  canvas#three { display: block; width: 100%; height: 100%; touch-action: none; }
 
   header {
     position: absolute; top: 0; left: 0; right: 0;
@@ -78,21 +78,23 @@
   #molBar {
     position: absolute;
     bottom: 22px; right: 22px;
-    display: flex; gap: 8px;
     z-index: 5;
   }
-  .molbtn {
+  #molSelect {
     background: var(--panel);
     border: 1px solid var(--line);
-    color: var(--chalk-dim);
+    color: var(--chalk);
     font-family: 'Georgia', serif;
-    font-size: 13px;
-    padding: 9px 14px;
+    font-size: 14px;
+    padding: 11px 14px;
     cursor: pointer;
-    transition: border-color 0.15s, color 0.15s;
+    min-width: 220px;
   }
-  .molbtn:hover { color: var(--chalk); border-color: var(--accent); }
-  .molbtn.active { color: var(--accent); border-color: var(--accent); }
+  #molSelect:hover, #molSelect:focus { border-color: var(--accent); outline: none; }
+  #molSelect optgroup {
+    background: var(--panel); color: var(--accent); font-style: normal;
+  }
+  #molSelect option { background: var(--panel); color: var(--chalk); }
 
   #status {
     position: absolute;
@@ -183,9 +185,29 @@
   <div class="cam-label">HAND TRACKING</div>
 
   <div id="molBar">
-    <button class="molbtn active" data-mol="methane">Methane · CH₄</button>
-    <button class="molbtn" data-mol="water">Water · H₂O</button>
-    <button class="molbtn" data-mol="co2">Carbon Dioxide · CO₂</button>
+    <select id="molSelect">
+      <optgroup label="Elements (diatomic)">
+        <option value="hydrogen">Hydrogen · H₂</option>
+        <option value="oxygen_gas">Oxygen · O₂</option>
+        <option value="nitrogen_gas">Nitrogen · N₂</option>
+        <option value="chlorine_gas">Chlorine · Cl₂</option>
+      </optgroup>
+      <optgroup label="Simple compounds">
+        <option value="water">Water · H₂O</option>
+        <option value="co2">Carbon Dioxide · CO₂</option>
+        <option value="ammonia">Ammonia · NH₃</option>
+        <option value="hcl">Hydrogen Chloride · HCl</option>
+      </optgroup>
+      <optgroup label="Carbon compounds">
+        <option value="methane" selected>Methane · CH₄</option>
+        <option value="ethane">Ethane · C₂H₆</option>
+        <option value="ethene">Ethene · C₂H₄</option>
+        <option value="ethyne">Ethyne · C₂H₂</option>
+        <option value="methanol">Methanol · CH₃OH</option>
+        <option value="ethanol">Ethanol · C₂H₅OH</option>
+        <option value="acetic_acid">Acetic Acid · CH₃COOH</option>
+      </optgroup>
+    </select>
   </div>
 
 </div>
@@ -220,11 +242,13 @@ const MATS = {
   C: new THREE.MeshStandardMaterial({ color: 0x3d3d3d, roughness: 0.4 }),
   H: new THREE.MeshStandardMaterial({ color: 0xeef2ea, roughness: 0.5 }),
   O: new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.4 }),
+  N: new THREE.MeshStandardMaterial({ color: 0x2f6fa3, roughness: 0.4 }),
+  Cl: new THREE.MeshStandardMaterial({ color: 0x7db24a, roughness: 0.4 }),
   bond: new THREE.MeshStandardMaterial({ color: 0x7d9186, roughness: 0.6 })
 };
-const RADII = { C: 0.62, H: 0.34, O: 0.56 };
+const RADII = { C: 0.62, H: 0.34, O: 0.56, N: 0.58, Cl: 0.74 };
 
-const LABEL_COLORS = { C: '#eef2ea', H: '#14201c', O: '#eef2ea' };
+const LABEL_COLORS = { C: '#eef2ea', H: '#14201c', O: '#eef2ea', N: '#eef2ea', Cl: '#14201c' };
 
 function makeLabelSprite(elem) {
   const size = 128;
@@ -283,6 +307,50 @@ function makeBond(p1, p2, thin) {
 }
 
 const MOLECULES = {
+  hydrogen: () => {
+    const g = new THREE.Group();
+    const h1 = new THREE.Vector3(-0.5,0,0), h2 = new THREE.Vector3(0.5,0,0);
+    g.add(makeAtom('H', h1)); g.add(makeAtom('H', h2));
+    g.add(makeBond(h1, h2, true));
+    return g;
+  },
+  oxygen_gas: () => {
+    const g = new THREE.Group();
+    const o1 = new THREE.Vector3(-0.6,0,0), o2 = new THREE.Vector3(0.6,0,0);
+    g.add(makeAtom('O', o1)); g.add(makeAtom('O', o2));
+    g.add(makeBond(o1, o2, false));
+    return g;
+  },
+  nitrogen_gas: () => {
+    const g = new THREE.Group();
+    const n1 = new THREE.Vector3(-0.6,0,0), n2 = new THREE.Vector3(0.6,0,0);
+    g.add(makeAtom('N', n1)); g.add(makeAtom('N', n2));
+    g.add(makeBond(n1, n2, false));
+    return g;
+  },
+  chlorine_gas: () => {
+    const g = new THREE.Group();
+    const c1 = new THREE.Vector3(-0.9,0,0), c2 = new THREE.Vector3(0.9,0,0);
+    g.add(makeAtom('Cl', c1)); g.add(makeAtom('Cl', c2));
+    g.add(makeBond(c1, c2, false));
+    return g;
+  },
+  hcl: () => {
+    const g = new THREE.Group();
+    const h = new THREE.Vector3(-0.7,0,0), cl = new THREE.Vector3(0.7,0,0);
+    g.add(makeAtom('H', h)); g.add(makeAtom('Cl', cl));
+    g.add(makeBond(h, cl, true));
+    return g;
+  },
+  ammonia: () => {
+    const g = new THREE.Group();
+    const n = new THREE.Vector3(0,0.35,0);
+    const h1 = new THREE.Vector3(1.05,-0.55,0);
+    const h2 = new THREE.Vector3(-0.52,-0.55,0.9);
+    const h3 = new THREE.Vector3(-0.52,-0.55,-0.9);
+    g.add(makeAtom('N', n)); [h1,h2,h3].forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(n, h, true)); });
+    return g;
+  },
   methane: () => {
     const g = new THREE.Group();
     const c = new THREE.Vector3(0,0,0);
@@ -292,6 +360,68 @@ const MOLECULES = {
       new THREE.Vector3(-1.2,1.2,-1.2), new THREE.Vector3(1.2,-1.2,-1.2)
     ];
     hs.forEach(p => { g.add(makeAtom('H', p)); g.add(makeBond(c, p, true)); });
+    return g;
+  },
+  ethane: () => {
+    const g = new THREE.Group();
+    const c1 = new THREE.Vector3(-0.75,0,0), c2 = new THREE.Vector3(0.75,0,0);
+    g.add(makeAtom('C', c1)); g.add(makeAtom('C', c2)); g.add(makeBond(c1, c2, false));
+    const h1 = [new THREE.Vector3(-1.4,0.9,0.6), new THREE.Vector3(-1.4,-0.5,0.95), new THREE.Vector3(-1.4,-0.5,-0.95)];
+    const h2 = [new THREE.Vector3(1.4,0.9,-0.6), new THREE.Vector3(1.4,-0.5,-0.95), new THREE.Vector3(1.4,-0.5,0.95)];
+    h1.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c1, h, true)); });
+    h2.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c2, h, true)); });
+    return g;
+  },
+  ethene: () => {
+    const g = new THREE.Group();
+    const c1 = new THREE.Vector3(-0.7,0,0), c2 = new THREE.Vector3(0.7,0,0);
+    g.add(makeAtom('C', c1)); g.add(makeAtom('C', c2)); g.add(makeBond(c1, c2, false));
+    const h1 = [new THREE.Vector3(-1.3,0.95,0), new THREE.Vector3(-1.3,-0.95,0)];
+    const h2 = [new THREE.Vector3(1.3,0.95,0), new THREE.Vector3(1.3,-0.95,0)];
+    h1.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c1, h, true)); });
+    h2.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c2, h, true)); });
+    return g;
+  },
+  ethyne: () => {
+    const g = new THREE.Group();
+    const c1 = new THREE.Vector3(-0.6,0,0), c2 = new THREE.Vector3(0.6,0,0);
+    const h1 = new THREE.Vector3(-1.6,0,0), h2 = new THREE.Vector3(1.6,0,0);
+    g.add(makeAtom('C', c1)); g.add(makeAtom('C', c2)); g.add(makeBond(c1, c2, false));
+    g.add(makeAtom('H', h1)); g.add(makeBond(c1, h1, true));
+    g.add(makeAtom('H', h2)); g.add(makeBond(c2, h2, true));
+    return g;
+  },
+  methanol: () => {
+    const g = new THREE.Group();
+    const c = new THREE.Vector3(-0.6,0,0), o = new THREE.Vector3(0.8,0,0), oh = new THREE.Vector3(1.4,0.8,0);
+    g.add(makeAtom('C', c)); g.add(makeAtom('O', o)); g.add(makeBond(c, o, false));
+    g.add(makeAtom('H', oh)); g.add(makeBond(o, oh, true));
+    const hs = [new THREE.Vector3(-1.3,0.9,0.5), new THREE.Vector3(-1.3,-0.6,0.95), new THREE.Vector3(-1.3,-0.6,-0.95)];
+    hs.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c, h, true)); });
+    return g;
+  },
+  ethanol: () => {
+    const g = new THREE.Group();
+    const c1 = new THREE.Vector3(-1.5,0,0), c2 = new THREE.Vector3(-0.1,0,0), o = new THREE.Vector3(1.2,0.3,0), oh = new THREE.Vector3(1.9,1.0,0);
+    g.add(makeAtom('C', c1)); g.add(makeAtom('C', c2)); g.add(makeBond(c1, c2, false));
+    g.add(makeAtom('O', o)); g.add(makeBond(c2, o, false));
+    g.add(makeAtom('H', oh)); g.add(makeBond(o, oh, true));
+    const h1 = [new THREE.Vector3(-2.2,0.9,0.5), new THREE.Vector3(-2.2,-0.5,0.95), new THREE.Vector3(-2.2,-0.5,-0.95)];
+    h1.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c1, h, true)); });
+    const h2 = [new THREE.Vector3(-0.1,0.9,0.7), new THREE.Vector3(-0.1,0.9,-0.7)];
+    h2.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c2, h, true)); });
+    return g;
+  },
+  acetic_acid: () => {
+    const g = new THREE.Group();
+    const c1 = new THREE.Vector3(-1.3,0,0), c2 = new THREE.Vector3(0,0,0);
+    const oDouble = new THREE.Vector3(0.4,1.0,0), oSingle = new THREE.Vector3(0.9,-0.8,0), hAcid = new THREE.Vector3(1.8,-0.8,0);
+    g.add(makeAtom('C', c1)); g.add(makeAtom('C', c2)); g.add(makeBond(c1, c2, false));
+    g.add(makeAtom('O', oDouble)); g.add(makeBond(c2, oDouble, false));
+    g.add(makeAtom('O', oSingle)); g.add(makeBond(c2, oSingle, false));
+    g.add(makeAtom('H', hAcid)); g.add(makeBond(oSingle, hAcid, true));
+    const hs = [new THREE.Vector3(-2.0,0.9,0.5), new THREE.Vector3(-2.0,-0.5,0.95), new THREE.Vector3(-2.0,-0.5,-0.95)];
+    hs.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c1, h, true)); });
     return g;
   },
   water: () => {
@@ -323,12 +453,8 @@ function loadMolecule(name) {
 }
 loadMolecule('methane');
 
-document.querySelectorAll('.molbtn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.molbtn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    loadMolecule(btn.dataset.mol);
-  });
+document.getElementById('molSelect').addEventListener('change', e => {
+  loadMolecule(e.target.value);
 });
 
 // rotation / zoom state, driven by gesture OR mouse fallback
@@ -365,6 +491,53 @@ window.addEventListener('mousemove', e => {
 });
 renderer.domElement.addEventListener('wheel', e => {
   currentZoom = Math.min(16, Math.max(4, currentZoom + e.deltaY * 0.01));
+});
+
+// ---------- TOUCH FALLBACK (for touchscreen smart boards) ----------
+let touchDragging = false, lastTouchX = 0, lastTouchY = 0;
+let pinchStartDist = null, pinchStartZoom = currentZoom;
+
+function touchDistance(t1, t2) {
+  return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+}
+
+renderer.domElement.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    touchDragging = true;
+    lastTouchX = e.touches[0].clientX;
+    lastTouchY = e.touches[0].clientY;
+  } else if (e.touches.length === 2) {
+    touchDragging = false;
+    pinchStartDist = touchDistance(e.touches[0], e.touches[1]);
+    pinchStartZoom = currentZoom;
+  }
+  e.preventDefault();
+}, { passive: false });
+
+renderer.domElement.addEventListener('touchmove', e => {
+  if (e.touches.length === 1 && touchDragging) {
+    const t = e.touches[0];
+    targetRotY += (t.clientX - lastTouchX) * 0.01;
+    targetRotX += (t.clientY - lastTouchY) * 0.01;
+    lastTouchX = t.clientX; lastTouchY = t.clientY;
+  } else if (e.touches.length === 2 && pinchStartDist !== null) {
+    const dist = touchDistance(e.touches[0], e.touches[1]);
+    const scale = pinchStartDist / dist;
+    currentZoom = Math.min(16, Math.max(4, pinchStartZoom * scale));
+  }
+  e.preventDefault();
+}, { passive: false });
+
+renderer.domElement.addEventListener('touchend', e => {
+  if (e.touches.length === 0) {
+    touchDragging = false;
+    pinchStartDist = null;
+  } else if (e.touches.length === 1) {
+    pinchStartDist = null;
+    touchDragging = true;
+    lastTouchX = e.touches[0].clientX;
+    lastTouchY = e.touches[0].clientY;
+  }
 });
 
 // ---------- HAND TRACKING ----------
