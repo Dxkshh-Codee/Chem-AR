@@ -851,7 +851,7 @@ const octx=overlay.getContext('2d');
 const statusEl=document.getElementById('status');
 const fpsEl=document.getElementById('fps');
 let lastHandX=null,lastHandY=null, smoothPinch=0.14, openPalmStart=null, camOn=false;
-let isPinched=false, lastTapEnd=0, doubleTapCooldown=0;
+let isPinched=false, lastTapEnd=0, doubleTapCooldown=0, pinchHoldStart=0;
 let lastFpsT=performance.now(), frames=0;
 
 function resizeOverlay(){
@@ -885,9 +885,9 @@ function onHandsResults(results){
     statusEl.classList.add('live'); statusEl.innerHTML='<span class="dot"></span>TRACKING — move·pinch·double-pinch→next';
     const lm=results.multiHandLandmarks[0];
     // draw skeleton
-    octx.fillStyle='#ffd27a'; lm.forEach(p=>{ octx.beginPath(); octx.arc(p.x*w, p.y*h, 4.2,0,Math.PI*2); octx.fill(); octx.strokeStyle='rgba(0,0,0,0.45)'; octx.lineWidth=0.9; octx.stroke(); });
+    octx.fillStyle='#070707'; lm.forEach(p=>{ octx.beginPath(); octx.arc(p.x*w, p.y*h, 4.6,0,Math.PI*2); octx.fill(); octx.strokeStyle='rgba(255,255,255,0.95)'; octx.lineWidth=1.0; octx.stroke(); });
     // connections faint
-    octx.strokeStyle='rgba(255,210,122,0.55)'; octx.lineWidth=1.6;
+    octx.strokeStyle='rgba(0,0,0,0.92)'; octx.lineWidth=1.8;
     const conn=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
     conn.forEach(([a,b])=>{ octx.beginPath(); octx.moveTo(lm[a].x*w, lm[a].y*h); octx.lineTo(lm[b].x*w, lm[b].y*h); octx.stroke(); });
     const palm=lm[9]; const handX=palm.x, handY=palm.y;
@@ -896,39 +896,49 @@ function onHandsResults(results){
     // pinch
     const thumb=lm[4], index=lm[8];
     const dist=Math.hypot(thumb.x-index.x, thumb.y-index.y);
-    // --- double pinch detection (thumb+index tap twice) ---
-    const pinchThreshold=0.045, openThreshold=0.08;
+    // --- double pinch detection (thumb+index tap twice) - fixed ---
+    const pinchThreshold=0.055, openThreshold=0.095;
     const nowTap=now;
+    // require pinch hold at least 70ms to count as intentional tap (reduces false triggers)
     if(!isPinched && dist < pinchThreshold){
-      isPinched=true;
-    } else if(isPinched && dist > openThreshold){
-      isPinched=false;
-      // count as a tap
-      if(nowTap - lastTapEnd < 700 && nowTap - doubleTapCooldown > 900){
-        // double tap detected
-        doubleTapCooldown=nowTap;
-        lastTapEnd=0; // reset
-        nextCompound();
-        octx.fillStyle='rgba(212,162,78,0.95)';
-        octx.fillRect(0, h-22, w, 22);
-        octx.fillStyle='#07130e';
-        octx.font='11px Courier New';
-        octx.fillText('DOUBLE PINCH → NEXT', w/2-66, h-8);
+      if(pinchHoldStart===0) pinchHoldStart=nowTap;
+      if(nowTap - pinchHoldStart > 70){
+        isPinched=true;
+      }
+    } else if(dist > openThreshold){
+      if(isPinched){
+        isPinched=false;
+        pinchHoldStart=0;
+        // count as a tap
+        if(nowTap - lastTapEnd < 750 && nowTap - doubleTapCooldown > 850){
+          // double tap detected - require two distinct taps
+          doubleTapCooldown=nowTap;
+          lastTapEnd=0;
+          nextCompound();
+          octx.fillStyle='rgba(0,0,0,0.88)';
+          octx.fillRect(0, h-24, w, 24);
+          octx.fillStyle='#ffffff';
+          octx.font='bold 12px Courier New';
+          octx.fillText('DOUBLE PINCH → NEXT', w/2-78, h-9);
+        } else if(nowTap - doubleTapCooldown > 850){
+          lastTapEnd=nowTap;
+          // single tap feedback - small black ring
+          octx.strokeStyle='rgba(0,0,0,0.9)'; octx.lineWidth=1.4; octx.beginPath(); octx.arc(thumb.x*w, thumb.y*h, 13, 0, Math.PI*2); octx.stroke();
+          octx.fillStyle='rgba(0,0,0,0.14)'; octx.beginPath(); octx.arc(thumb.x*w, thumb.y*h, 13, 0, Math.PI*2); octx.fill();
+        }
       } else {
-        lastTapEnd=nowTap;
-        // single tap hint
-        octx.fillStyle='rgba(212,162,78,0.7)';
-        octx.beginPath(); octx.arc(thumb.x*w, thumb.y*h, 10, 0, Math.PI*2); octx.fill();
+        // not pinched, reset hold timer if far apart
+        pinchHoldStart=0;
       }
     }
-    // visual pinch state dot
+    // visual pinch state dot (black)
     if(dist < pinchThreshold){
-      octx.fillStyle='rgba(92,154,111,0.9)'; octx.beginPath(); octx.arc((thumb.x+index.x)/2*w, (thumb.y+index.y)/2*h, 5,0,Math.PI*2); octx.fill();
+      octx.fillStyle='rgba(0,0,0,0.92)'; octx.beginPath(); octx.arc((thumb.x+index.x)/2*w, (thumb.y+index.y)/2*h, 6,0,Math.PI*2); octx.fill(); octx.strokeStyle='rgba(255,255,255,0.9)'; octx.lineWidth=1.1; octx.stroke();
     }
     smoothPinch+=(dist-smoothPinch)*0.22;
     const mapped=5 + Math.min(1, Math.max(0, (smoothPinch-0.025)/0.21))*9; // 5..14
-    // suppress zoom jump during double tap cooldown (350ms)
-    if(nowTap - doubleTapCooldown > 350){
+    // suppress zoom jump during double tap cooldown (400ms) to prevent accidental zoom on tap
+    if(nowTap - doubleTapCooldown > 400){
       currentZoom+= (mapped - currentZoom)*0.18;
     }
     // open palm reset
@@ -942,7 +952,7 @@ function onHandsResults(results){
     } else openPalmStart=null;
   } else {
     statusEl.classList.remove('live'); statusEl.innerHTML='<span class="dot"></span>NO HAND DETECTED — show hand 40-70cm away';
-    lastHandX=null; lastHandY=null; openPalmStart=null;
+    lastHandX=null; lastHandY=null; openPalmStart=null; isPinched=false; pinchHoldStart=0;
   }
 }
 
