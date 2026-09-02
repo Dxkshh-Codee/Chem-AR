@@ -87,6 +87,24 @@
   #noCam{font-size:12px;color:var(--dim);font-family:'Courier New',monospace;cursor:pointer;text-decoration:underline;margin-top:14px}
   .badgeRow{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;justify-content:center}
   .badge{font-family:'Courier New',monospace;font-size:11px;color:var(--dim);border:1px solid var(--line);padding:6px 10px;border-radius:999px;background:rgba(27,46,38,0.6)}
+  /* builder mode */
+  .modeToggle{font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.6px;padding:8px 12px;border:1px solid var(--accent);background:var(--accent);color:#0f1c18;border-radius:999px;cursor:pointer;font-weight:700}
+  .modeToggle.builder{ background:#1b2e26;color:var(--accent2);border-color:var(--accent)}
+  #builderPanel{display:none;flex-direction:column;gap:12px;padding:12px;overflow:auto}
+  #builderPanel.active{display:flex}
+  #libraryPanel{ display:flex; flex-direction:column; overflow:hidden; flex:1}
+  #libraryPanel.hidden{display:none}
+  .builderCard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .builderCard h4{margin:0 0 6px;font-size:14px;color:var(--accent2)}
+  .builderRow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .builderBtn{flex:1;min-width:92px;padding:9px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--chalk);cursor:pointer;font-size:12px;font-family:'Courier New',monospace}
+  .builderBtn.primary{background:var(--accent);color:#0f1c18;border-color:var(--accent);font-weight:700}
+  .builderBtn:hover{border-color:var(--accent)}
+  .bondSel{width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--chalk);font-family:'Courier New',monospace;font-size:12px}
+  .chainVis{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-family:'Courier New',monospace;font-size:11px;color:var(--dim);background:rgba(0,0,0,0.22);border:1px solid var(--line);border-radius:8px;padding:8px}
+  .chainDot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px}
+  .chainDot.C{background:#3d3d3d;color:#eef2ea;border:1px solid #555}
+  .chainBond{color:var(--accent);font-weight:700}
   /* responsive */
   @media (max-width:1100px){
     #main{grid-template-columns:270px 1fr 300px}
@@ -133,6 +151,7 @@
       <button class="tab" data-filter="12">Class 12</button>
     </div>
     <input id="search" class="search" placeholder="Search molecule or formula… (e.g. benzene)">
+    <button id="modeToggle" class="modeToggle">🔧 Builder: OFF</button>
   </header>
 
   <div id="main">
@@ -171,17 +190,50 @@
     </section>
 
     <aside id="right">
-      <div class="rightHead">
-        <h3>MOLECULE LIBRARY</h3>
-        <div class="countInfo" id="countInfo">Showing 55 molecules</div>
-      </div>
-      <div class="infoCard" id="infoCard">
+      <div id="libraryPanel">
+        <div class="rightHead">
+          <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><h3>MOLECULE LIBRARY</h3><span id="builderStatus" style="font-family:Courier New,monospace;font-size:10px;color:var(--dim)"></span></div>
+          <div class="countInfo" id="countInfo">Showing 55 molecules</div>
+        </div>
+        <div class="infoCard" id="infoCard">
         <div class="ic-title" id="icTitle">Methane — CH₄</div>
         <div class="ic-form" id="icFormula">Class 10 • Carbon compounds • Alkane</div>
         <div class="ic-desc" id="icDesc">Simplest alkane, tetrahedral (109.5°). Found in biogas, natural gas. Basis for understanding sp³ hybridisation.</div>
         <div class="ic-tags" id="icTags"></div>
       </div>
-      <div id="molGrid"></div>
+        <div id="molGrid"></div>
+      </div>
+      <div id="builderPanel">
+        <div class="builderCard">
+          <h4>🔬 Carbon Builder — Class 10 Basics</h4>
+          <div style="font-size:12px;color:var(--dim);line-height:1.5">Learn catenation hands-on. <b style="color:var(--chalk)">Add / remove carbon atoms with hand gestures</b> — bonding & valency updates live.</div>
+          <div style="margin-top:10px;font-family:Courier New,monospace;font-size:11px;color:var(--dim)">VIEW MODE: double-pinch → next compound<br>BUILDER MODE:<br><b style="color:var(--accent)">Single pinch</b> = +1 Carbon &nbsp; <b style="color:var(--accent)">Double pinch</b> = −1 Carbon &nbsp; <b>Open palm 1.2s</b> = clear to C₁</div>
+        </div>
+        <div class="builderCard">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-family:Courier New,monospace;font-size:11px;color:var(--dim)">CHAIN</span><span id="builderCount" style="font-weight:700;color:var(--accent)">C1</span></div>
+          <div id="chainVis" class="chainVis" style="margin-top:8px">C</div>
+          <div id="builderFormula" style="margin-top:8px;font-size:17px;color:var(--chalk)">Methane — CH₄</div>
+          <div id="builderDesc" style="font-family:Courier New,monospace;font-size:11px;color:var(--dim);margin-top:4px">1 Carbon • 0 C–C bonds • 4 H (valency satisfied)</div>
+          <div id="builderLearn" style="margin-top:8px;font-size:12px;color:var(--dim);line-height:1.5;background:rgba(212,162,78,0.08);border:1px solid rgba(212,162,78,0.18);border-radius:8px;padding:8px">Catenation: carbon forms 4 bonds. With 1 C, all 4 are C–H.</div>
+        </div>
+        <div class="builderCard">
+          <label style="font-family:Courier New,monospace;font-size:11px;color:var(--dim)">BOND TYPE (for C₂)</label>
+          <select id="bondSel" class="bondSel">
+            <option value="single">Single — C–C (alkane)</option>
+            <option value="double">Double — C=C (alkene)</option>
+            <option value="triple">Triple — C≡C (alkyne)</option>
+          </select>
+          <div class="builderRow">
+            <button id="addC" class="builderBtn primary">+ Add C</button>
+            <button id="removeC" class="builderBtn">− Remove C</button>
+            <button id="clearC" class="builderBtn">Clear</button>
+          </div>
+          <div class="builderRow">
+            <button id="builderResetView" class="builderBtn">Reset View</button>
+          </div>
+          <div style="margin-top:8px;font-family:Courier New,monospace;font-size:10px;color:var(--dim)">Hand: single pinch = Add, double pinch = Remove, open palm = Clear. Mouse/touch buttons work as fallback.</div>
+        </div>
+      </div>
     </aside>
   </div>
 </div>
@@ -722,6 +774,9 @@ const MOLECULES=ORDERED_IDS.map(id=>({id, ...META[id], builder: BUILDER_MAP[id]|
 let currentId='methane';
 let filterCls='all';
 let searchQ='';
+let builderMode=false;
+let builderCarbons=1;
+let builderBond='single';
 const grid=document.getElementById('molGrid');
 const countInfo=document.getElementById('countInfo');
 const icTitle=document.getElementById('icTitle');
@@ -775,8 +830,170 @@ document.getElementById('classTabs').addEventListener('click',e=>{
   filterCls=t.dataset.filter; renderGrid();
 });
 document.getElementById('search').addEventListener('input',e=>{ searchQ=e.target.value; renderGrid(); });
+document.getElementById('modeToggle')?.addEventListener('click',()=> setBuilderMode(!builderMode));
+document.getElementById('addC')?.addEventListener('click',()=>{ if(builderCarbons<6){builderCarbons++; document.getElementById('bondSel').value=builderBond; renderBuilder();}});
+document.getElementById('removeC')?.addEventListener('click',()=>{ if(builderCarbons>1){builderCarbons--; renderBuilder();}});
+document.getElementById('clearC')?.addEventListener('click',()=>{ builderCarbons=1; builderBond='single'; const sel=document.getElementById('bondSel'); if(sel) sel.value='single'; renderBuilder();});
+document.getElementById('builderResetView')?.addEventListener('click',()=> resetView());
+document.getElementById('bondSel')?.addEventListener('change',e=>{ builderBond=e.target.value; if(builderMode) renderBuilder(); });
+
+
+// ---------- BUILDER MODE ----------
+function updateBuilderUI(){
+  const n=builderCarbons, bond=builderBond;
+  // compute formula and name
+  let formula='', name='', hCount=0;
+  if(n===1){ hCount=4; formula='CH₄'; name='Methane'; }
+  else if(n===2){
+    if(bond==='single'){ hCount=6; formula='C₂H₆'; name='Ethane'; }
+    else if(bond==='double'){ hCount=4; formula='C₂H₄'; name='Ethene'; }
+    else { hCount=2; formula='C₂H₂'; name='Ethyne'; }
+  } else if(n===3){ hCount=8; formula='C₃H₈'; name='Propane'; }
+  else if(n===4){ hCount=10; formula='C₄H₁₀'; name='Butane'; }
+  else if(n===5){ hCount=12; formula='C₅H₁₂'; name='Pentane'; }
+  else { hCount=14; formula='C₆H₁₄'; name='Hexane'; }
+  const elCount=document.getElementById('builderCount');
+  const elFormula=document.getElementById('builderFormula');
+  const elDesc=document.getElementById('builderDesc');
+  const elChain=document.getElementById('chainVis');
+  const elLearn=document.getElementById('builderLearn');
+  if(elCount) elCount.textContent='C'+n + (n===2 ? ' ('+bond+')' : '');
+  if(elFormula) elFormula.textContent=name+' — '+formula;
+  if(elDesc) elDesc.textContent=n+' Carbon'+(n>1?'s':'')+' • '+(n-1)+' C–C '+(n>2?'bonds':'bond')+' • '+hCount+' H (4 bonds per C)';
+  if(elChain){
+    let chainHtml='';
+    for(let i=0;i<n;i++){
+      chainHtml+='<span class="chainDot C">C</span>';
+      if(i<n-1){
+        let b='—'; if(n===2 && bond==='double') b='='; else if(n===2 && bond==='triple') b='≡';
+        chainHtml+='<span class="chainBond">'+b+'</span>';
+      }
+    }
+    chainHtml+='<span style="margin-left:8px;color:var(--accent)">+ '+hCount+' H</span>';
+    elChain.innerHTML=chainHtml;
+  }
+  if(elLearn){
+    if(n===1) elLearn.textContent='Catenation start: 1 carbon has 4 open valencies, all filled by H → methane, tetrahedral.';
+    else if(n===2 && bond==='single') elLearn.textContent='2 carbons single-bonded: each C shares 1 bond with neighbor, remaining 3 valencies each → 6 H. Saturated alkane.';
+    else if(n===2 && bond==='double') elLearn.textContent='Double bond: each C shares 2 bonds with neighbor, leaving 2 valencies each → 4 H. Unsaturated alkene, planar.';
+    else if(n===2 && bond==='triple') elLearn.textContent='Triple bond: each C shares 3 bonds, leaving 1 valency each → 2 H. Linear alkyne.';
+    else elLearn.textContent='Chain of '+n+' carbons (catenation). Each interior C has 2 C–C bonds + 2 C–H, ends have 1 C–C + 3 C–H. General alkane CₙH₂ₙ₊₂.';
+  }
+}
+function buildCarbonChain(){
+  const g=new THREE.Group();
+  const n=builderCarbons, bond=builderBond;
+  const spacing=1.55;
+  const carbons=[];
+  for(let i=0;i<n;i++){
+    const pos=new THREE.Vector3((i-(n-1)/2)*spacing, 0, 0);
+    carbons.push(pos);
+    g.add(makeAtom('C', pos));
+  }
+  // bonds between carbons
+  for(let i=0;i<n-1;i++){
+    const isSpecial = (n===2 && i===0);
+    if(isSpecial && bond==='single') g.add(makeBond(carbons[i], carbons[i+1], false));
+    else if(isSpecial && (bond==='double' || bond==='triple')){
+      // represent double/triple as two/three parallel bonds offset in Y
+      const off=0.14;
+      if(bond==='double'){
+        const a=carbons[i].clone(), b=carbons[i+1].clone(); a.y+=off; b.y+=off; g.add(makeBond(a,b,true));
+        const a2=carbons[i].clone(), b2=carbons[i+1].clone(); a2.y-=off; b2.y-=off; g.add(makeBond(a2,b2,true));
+      } else {
+        g.add(makeBond(carbons[i], carbons[i+1], false));
+        const a=carbons[i].clone(), b=carbons[i+1].clone(); a.y+=off*1.2; b.y+=off*1.2; g.add(makeBond(a,b,true));
+        const a2=carbons[i].clone(), b2=carbons[i+1].clone(); a2.y-=off*1.2; b2.y-=off*1.2; g.add(makeBond(a2,b2,true));
+      }
+    } else {
+      g.add(makeBond(carbons[i], carbons[i+1], false));
+    }
+  }
+  // hydrogens: compute needed per carbon
+  for(let i=0;i<n;i++){
+    let needed;
+    if(n===1) needed=4;
+    else if(n===2){
+      if(bond==='single') needed=3;
+      else if(bond==='double') needed=2;
+      else needed=1;
+    } else {
+      if(i===0 || i===n-1) needed=3; else needed=2;
+    }
+    const base=carbons[i];
+    const dirs=[];
+    if(needed===4) dirs.push(new THREE.Vector3(0.85,0.85,0.85), new THREE.Vector3(-0.85,0.85,-0.85), new THREE.Vector3(0.85,-0.85,-0.85), new THREE.Vector3(-0.85,-0.85,0.85));
+    else if(needed===3) dirs.push(new THREE.Vector3(0.0,1.05,0.3), new THREE.Vector3(0.0,-0.55,0.95), new THREE.Vector3(0.0,-0.55,-0.95));
+    else if(needed===2) dirs.push(new THREE.Vector3(0.0,0.95,0.55), new THREE.Vector3(0.0,0.95,-0.55));
+    else if(needed===1) dirs.push(new THREE.Vector3(0.0,0.95,0));
+    dirs.forEach(d=>{
+      const hPos=base.clone().add(d.clone().multiplyScalar(0.95));
+      g.add(makeAtom('H', hPos));
+      g.add(makeBond(base, hPos, true));
+    });
+  }
+  return g;
+}
+function renderBuilder(){
+  if(!builderMode) return;
+  while(molGroup.children.length) molGroup.remove(molGroup.children[0]);
+  labeledAtoms=[];
+  molGroup.add(buildCarbonChain());
+  updateBuilderUI();
+  // update overlay info
+  const ovN=document.getElementById('ovName'), ovF=document.getElementById('ovForm'), ovM=document.getElementById('ovMeta');
+  let formula='', name='';
+  if(builderCarbons===1){formula='CH₄'; name='Methane';}
+  else if(builderCarbons===2){ if(builderBond==='single'){formula='C₂H₆'; name='Ethane';} else if(builderBond==='double'){formula='C₂H₄'; name='Ethene';} else {formula='C₂H₂'; name='Ethyne';}}
+  else if(builderCarbons===3){formula='C₃H₈'; name='Propane';}
+  else if(builderCarbons===4){formula='C₄H₁₀'; name='Butane';}
+  else if(builderCarbons===5){formula='C₅H₁₂'; name='Pentane';}
+  else {formula='C₆H₁₄'; name='Hexane';}
+  if(ovN) ovN.textContent=name+' (Builder)';
+  if(ovF) ovF.textContent=formula+' • '+builderCarbons+' C • '+builderBond;
+  if(ovM) ovM.textContent='Builder Mode — single pinch +C, double pinch -C, open palm clear';
+}
+function setBuilderMode(on){
+  builderMode=on;
+  const btn=document.getElementById('modeToggle');
+  const builderPanel=document.getElementById('builderPanel');
+  const libraryPanel=document.getElementById('libraryPanel');
+  const grid=document.getElementById('molGrid');
+  const infoCard=document.getElementById('infoCard');
+  const countInfo=document.getElementById('countInfo');
+  const rightHead=document.querySelector('#libraryPanel .rightHead');
+  const builderStatus=document.getElementById('builderStatus');
+  const search=document.getElementById('search');
+  const tabs=document.getElementById('classTabs');
+  if(btn) { btn.textContent = on ? '🧪 View Mode' : '🔧 Builder: OFF'; btn.classList.toggle('builder', on); }
+  if(builderPanel) builderPanel.classList.toggle('active', on);
+  if(builderStatus) builderStatus.textContent = on ? 'BUILDER ON' : '';
+  if(on){
+    if(grid) grid.style.display='none';
+    if(infoCard) infoCard.style.display='none';
+    if(countInfo) countInfo.style.display='none';
+    if(rightHead) rightHead.style.display='none';
+    if(search) search.style.display='none';
+    if(tabs) tabs.style.display='none';
+    renderBuilder();
+    const hint=document.getElementById('gestureHint');
+    if(hint) hint.innerHTML='<b>BUILDER MODE</b><br><b>Single pinch</b> = +1 C<br><b>Double pinch</b> = −1 C<br><b>Open palm 1.2s</b> = clear to C₁<br><b>Move</b> = rotate<br><b>Pinch hold</b> = zoom';
+  } else {
+    if(grid) grid.style.display='grid';
+    if(infoCard) infoCard.style.display='block';
+    if(countInfo) countInfo.style.display='block';
+    if(rightHead) rightHead.style.display='flex';
+    if(search) search.style.display='block';
+    if(tabs) tabs.style.display='flex';
+    const hint=document.getElementById('gestureHint');
+    if(hint) hint.innerHTML='<b>MOVE HAND</b> — rotate (higher sensitivity)<br><b>PINCH</b> (thumb + index) — zoom in/out<br><b>DOUBLE PINCH</b> — tap thumb+index twice to next compound<br><b>OPEN PALM</b> — hold 1.2s to reset view<br><b>MOUSE</b> — drag rotate, scroll zoom<br><b>TOUCH</b> — 1-finger drag, 2-finger pinch';
+    loadMolecule(currentId);
+  }
+}
 
 // ---------- DOUBLE PINCH NEXT COMPOUND ----------
+
+
 function getFilteredList(){
   const q=searchQ.trim().toLowerCase();
   return MOLECULES.filter(m=>{
@@ -914,7 +1131,7 @@ function onHandsResults(results){
           // double tap detected - require two distinct taps
           doubleTapCooldown=nowTap;
           lastTapEnd=0;
-          nextCompound();
+          if(builderMode){ if(builderCarbons>1){ builderCarbons--; renderBuilder(); } } else nextCompound();
           octx.fillStyle='rgba(0,0,0,0.88)';
           octx.fillRect(0, h-24, w, 24);
           octx.fillStyle='#ffffff';
@@ -922,6 +1139,9 @@ function onHandsResults(results){
           octx.fillText('DOUBLE PINCH → NEXT', w/2-78, h-9);
         } else if(nowTap - doubleTapCooldown > 850){
           lastTapEnd=nowTap;
+          if(builderMode && nowTap - doubleTapCooldown > 850){
+            if(builderCarbons<6){ builderCarbons++; renderBuilder(); octx.fillStyle='rgba(0,0,0,0.88)'; octx.fillRect(0, h-24, w, 24); octx.fillStyle='#ffffff'; octx.font='bold 12px Courier New'; octx.fillText('BUILDER +1 C → C'+builderCarbons, w/2-68, h-9); doubleTapCooldown=nowTap; }
+          }
           // single tap feedback - small black ring
           octx.strokeStyle='rgba(0,0,0,0.9)'; octx.lineWidth=1.4; octx.beginPath(); octx.arc(thumb.x*w, thumb.y*h, 13, 0, Math.PI*2); octx.stroke();
           octx.fillStyle='rgba(0,0,0,0.14)'; octx.beginPath(); octx.arc(thumb.x*w, thumb.y*h, 13, 0, Math.PI*2); octx.fill();
@@ -946,7 +1166,7 @@ function onHandsResults(results){
       if(openPalmStart===null) openPalmStart=now;
       const hold=now-openPalmStart;
       octx.fillStyle='rgba(212,162,78,0.9)'; octx.font='10px Courier New'; octx.fillText('OPEN PALM '+Math.round(hold)+'ms', 6, 14);
-      if(hold>1200){ resetView(); openPalmStart=null; // brief flash
+      if(hold>1200){ if(builderMode){ builderCarbons=1; builderBond='single'; const sel=document.getElementById('bondSel'); if(sel) sel.value='single'; renderBuilder(); } else resetView(); openPalmStart=null; // brief flash
         octx.fillStyle='rgba(92,154,111,0.9)'; octx.fillRect(0,h/2-14,w,18); octx.fillStyle='#07130e'; octx.fillText('RESET', w/2-14, h/2-2);
       }
     } else openPalmStart=null;
