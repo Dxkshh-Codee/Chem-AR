@@ -2,625 +2,738 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Gesture Molecule Lab — Smart Board AR Prototype</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gesture Molecule Lab — Class 10/11/12 | Smart Board AR</title>
 <style>
-  :root {
-    --slate: #14201c;
-    --panel: #1c2b25;
-    --chalk: #eef2ea;
-    --chalk-dim: #a9b7ac;
-    --carbon: #3d3d3d;
-    --oxygen: #c0392b;
-    --hydrogen: #eef2ea;
-    --nitrogen: #2f6fa3;
-    --bond: #7d9186;
-    --accent: #d4a24e;
-    --line: #2c3d35;
+  :root{
+    --slate:#0f1c18;
+    --panel:#1b2e26;
+    --panel2:#13231d;
+    --chalk:#eef2ea;
+    --dim:#9ab0a3;
+    --line:#2b3f36;
+    --accent:#d4a24e;
+    --accent2:#e8c07a;
+    --radius:14px;
   }
-  * { box-sizing: border-box; }
-  html, body {
-    margin: 0; padding: 0; height: 100%;
-    background: var(--slate);
-    color: var(--chalk);
-    font-family: 'Georgia', 'Iowan Old Style', serif;
-    overflow: hidden;
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;background:var(--slate);color:var(--chalk);font-family:'Georgia',serif;overflow:hidden}
+  #app{position:relative;width:100vw;height:100vh;display:flex;flex-direction:column}
+  /* header */
+  header{position:relative;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;background:rgba(15,28,24,0.92);border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
+  .brand{display:flex;flex-direction:column;line-height:1}
+  .brand .title{font-size:20px;letter-spacing:0.2px}
+  .brand .title em{color:var(--accent);font-style:normal}
+  .brand .sub{font-family:'Courier New',monospace;font-size:11px;color:var(--dim);letter-spacing:0.6px;margin-top:4px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap}
+  .tab{font-family:'Courier New',monospace;font-size:12px;letter-spacing:0.5px;padding:9px 14px;border:1px solid var(--line);background:var(--panel);color:var(--chalk);cursor:pointer;border-radius:999px;transition:all .18s}
+  .tab.active,.tab:hover{border-color:var(--accent);color:var(--accent2);background:#24392f}
+  .search{font-family:'Courier New',monospace;font-size:12px;padding:9px 12px;border:1px solid var(--line);background:var(--panel2);color:var(--chalk);border-radius:999px;min-width:200px;outline:none}
+  .search:focus{border-color:var(--accent)}
+  /* layout */
+  #main{flex:1;display:grid;grid-template-columns:250px 1fr 360px;gap:0;overflow:hidden}
+  #left{border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;padding:14px;gap:12px;overflow:auto}
+  #center{position:relative;background:radial-gradient(1200px 600px at 50% 30%, #1e352a 0%, var(--slate) 65%);overflow:hidden}
+  #right{border-left:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;overflow:hidden}
+  /* left */
+  .camWrap{position:relative;width:100%;aspect-ratio:4/3;background:#000;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  #video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+  #overlay{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);pointer-events:none}
+  .cam-label{font-family:'Courier New',monospace;font-size:11px;color:var(--dim);letter-spacing:1px;display:flex;justify-content:space-between;align-items:center}
+  #status{font-family:'Courier New',monospace;font-size:11px;color:var(--dim);line-height:1.6}
+  #status .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;background:#7a3b3b;vertical-align:middle}
+  #status.live .dot{background:#5c9a6f;box-shadow:0 0 8px #5c9a6f}
+  #gestureHint{font-family:'Courier New',monospace;font-size:11.5px;color:var(--dim);line-height:1.7;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  #gestureHint b{color:var(--accent);font-weight:700}
+  .btn{font-family:'Georgia',serif;font-size:13px;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--accent);color:#14201c;cursor:pointer;font-weight:700;width:100%}
+  .btn.secondary{background:transparent;color:var(--chalk);border-color:var(--line)}
+  .btn:hover{opacity:.92}
+  .hintSmall{font-family:'Courier New',monospace;font-size:11px;color:var(--dim);line-height:1.5}
+  /* center canvas */
+  #canvasHost{position:absolute;inset:0}
+  canvas#three{display:block;width:100%;height:100%;touch-action:none}
+  #molInfoOverlay{position:absolute;left:14px;top:14px;background:rgba(20,32,28,0.86);border:1px solid var(--line);border-radius:12px;padding:10px 12px;z-index:4;min-width:220px;backdrop-filter:blur(6px)}
+  #molInfoOverlay .ov-name{font-size:16px;color:var(--accent2)}
+  #molInfoOverlay .ov-form{font-family:'Courier New',monospace;font-size:12px;color:var(--dim)}
+  #molInfoOverlay .ov-meta{font-family:'Courier New',monospace;font-size:11px;color:var(--dim);margin-top:6px}
+  #viewControls{position:absolute;right:14px;top:14px;z-index:4;display:flex;gap:8px}
+  .iconBtn{width:38px;height:38px;border-radius:999px;border:1px solid var(--line);background:rgba(27,46,38,0.9);color:var(--chalk);display:grid;place-items:center;cursor:pointer;font-size:14px}
+  .iconBtn:hover{border-color:var(--accent);color:var(--accent2)}
+  /* right */
+  .rightHead{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+  .rightHead h3{margin:0;font-size:13px;letter-spacing:0.6px;color:var(--accent);font-family:'Courier New',monospace}
+  .infoCard{margin:12px 14px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+  .infoCard .ic-title{font-size:18px;color:var(--chalk)}
+  .infoCard .ic-form{font-family:'Courier New',monospace;font-size:13px;color:var(--accent2);margin-top:2px}
+  .infoCard .ic-desc{font-size:13px;color:var(--dim);line-height:1.6;margin-top:8px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .infoCard .ic-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .tag{font-family:'Courier New',monospace;font-size:10.5px;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--dim);background:var(--panel2)}
+  .tag.class{color:#0f1c18;background:var(--accent);border-color:var(--accent);font-weight:700}
+  #molGrid{padding:10px 12px 14px;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start}
+  .molBtn{padding:10px 10px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--chalk);cursor:pointer;text-align:left;transition:all .15s;display:flex;flex-direction:column;gap:3px}
+  .molBtn:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .molBtn.active{border-color:var(--accent);background:#2a3f34;box-shadow:0 4px 14px rgba(212,162,78,0.15)}
+  .molBtn .mb-name{font-size:13px;line-height:1.1}
+  .molBtn .mb-form{font-family:'Courier New',monospace;font-size:11px;color:var(--dim)}
+  .molBtn .mb-cls{font-family:'Courier New',monospace;font-size:10px;color:var(--accent);letter-spacing:0.5px}
+  .countInfo{font-family:'Courier New',monospace;font-size:11px;color:var(--dim);padding:0 14px 6px}
+  /* start screen */
+  #startScreen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(1000px 600px at 50% 15%, #234635 0%, var(--slate) 62%);z-index:20;text-align:center;padding:20px}
+  #startScreen h1{font-size:34px;font-weight:normal;margin:0 0 10px}
+  #startScreen h1 em{color:var(--accent);font-style:normal}
+  #startScreen p{color:var(--dim);max-width:560px;margin:0 0 22px;font-size:14.5px;line-height:1.6;font-family:system-ui,sans-serif}
+  #startScreen .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  #startBtn{padding:13px 24px;border-radius:999px}
+  #noCam{font-size:12px;color:var(--dim);font-family:'Courier New',monospace;cursor:pointer;text-decoration:underline;margin-top:14px}
+  .badgeRow{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;justify-content:center}
+  .badge{font-family:'Courier New',monospace;font-size:11px;color:var(--dim);border:1px solid var(--line);padding:6px 10px;border-radius:999px;background:rgba(27,46,38,0.6)}
+  /* responsive */
+  @media (max-width:1100px){
+    #main{grid-template-columns:220px 1fr 300px}
+    header{flex-wrap:wrap}
   }
-  #app { position: relative; width: 100vw; height: 100vh; }
-
-  #canvasHost { position: absolute; inset: 0; }
-  canvas#three { display: block; width: 100%; height: 100%; touch-action: none; }
-
-  header {
-    position: absolute; top: 0; left: 0; right: 0;
-    display: flex; align-items: baseline; justify-content: space-between;
-    padding: 22px 28px;
-    z-index: 5;
-    pointer-events: none;
-  }
-  header .title {
-    font-size: 22px; letter-spacing: 0.3px;
-    color: var(--chalk);
-  }
-  header .title em { color: var(--accent); font-style: normal; }
-  header .sub {
-    font-family: 'Courier New', monospace;
-    font-size: 12px; color: var(--chalk-dim);
-  }
-
-  #video {
-    position: absolute;
-    bottom: 22px; left: 22px;
-    width: 200px; height: 150px;
-    border: 1px solid var(--line);
-    transform: scaleX(-1);
-    opacity: 0.85;
-    z-index: 4;
-    background: #000;
-  }
-  #overlay {
-    position: absolute;
-    bottom: 22px; left: 22px;
-    width: 200px; height: 150px;
-    transform: scaleX(-1);
-    z-index: 5;
-    pointer-events: none;
-  }
-  .cam-label {
-    position: absolute;
-    bottom: 176px; left: 22px;
-    font-family: 'Courier New', monospace;
-    font-size: 11px; color: var(--chalk-dim);
-    z-index: 5;
-    letter-spacing: 1px;
-  }
-
-  #molBar {
-    position: absolute;
-    bottom: 22px; right: 22px;
-    z-index: 5;
-  }
-  #molSelect {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    color: var(--chalk);
-    font-family: 'Georgia', serif;
-    font-size: 14px;
-    padding: 11px 14px;
-    cursor: pointer;
-    min-width: 220px;
-  }
-  #molSelect:hover, #molSelect:focus { border-color: var(--accent); outline: none; }
-  #molSelect optgroup {
-    background: var(--panel); color: var(--accent); font-style: normal;
-  }
-  #molSelect option { background: var(--panel); color: var(--chalk); }
-
-  #status {
-    position: absolute;
-    top: 22px; right: 28px;
-    text-align: right;
-    z-index: 5;
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
-    color: var(--chalk-dim);
-    line-height: 1.7;
-  }
-  #status .dot {
-    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
-    margin-right: 6px; background: #7a3b3b;
-  }
-  #status.live .dot { background: #5c9a6f; }
-
-  #gestureHint {
-    position: absolute;
-    top: 96px; left: 28px;
-    z-index: 5;
-    font-size: 12px; color: var(--chalk-dim);
-    font-family: 'Courier New', monospace;
-    max-width: 260px;
-    line-height: 1.6;
-    display: none;
-  }
-
-  #startScreen {
-    position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    flex-direction: column;
-    background: var(--slate);
-    z-index: 20;
-    text-align: center;
-    padding: 20px;
-  }
-  #startScreen h1 {
-    font-size: 30px; font-weight: normal; margin: 0 0 12px;
-  }
-  #startScreen h1 em { color: var(--accent); font-style: normal; }
-  #startScreen p {
-    color: var(--chalk-dim); max-width: 420px; margin: 0 0 26px;
-    font-size: 14px; line-height: 1.6;
-  }
-  #startBtn {
-    background: var(--accent); color: var(--slate); border: none;
-    font-family: 'Georgia', serif; font-size: 15px;
-    padding: 13px 30px; cursor: pointer;
-  }
-  #startBtn:hover { opacity: 0.9; }
-  #noCam {
-    margin-top: 14px; font-size: 12px; color: var(--chalk-dim);
-    font-family: 'Courier New', monospace; cursor: pointer;
-    text-decoration: underline;
+  @media (max-width:800px){
+    html,body{overflow:auto;height:auto}
+    #app{height:auto;min-height:100vh}
+    #main{grid-template-columns:1fr;grid-template-rows:auto 420px auto}
+    #left{order:2}
+    #center{order:1;min-height:420px}
+    #right{order:3}
+    header{position:sticky;top:0}
   }
 </style>
 </head>
 <body>
 <div id="app">
-
   <div id="startScreen">
     <h1>Gesture <em>Molecule</em> Lab</h1>
-    <p>A prototype for smart-board chemistry lessons. Show your hand to the camera —
-    move it to rotate the molecule, pinch your thumb and index finger to zoom in and out.
-    No new hardware, just the webcam already built into most smart boards.</p>
-    <button id="startBtn">Enable Camera &amp; Begin</button>
-    <div id="noCam">Skip camera — use mouse instead</div>
+    <p>Smart-board AR for <b style="color:var(--accent2)">Class 10 • 11 • 12</b> — show your hand to the camera to rotate, pinch to zoom. Each class has its own curated molecules from NCERT/CBSE syllabus. Works with webcam + hand gestures, plus mouse/touch fallback. No extra hardware.</p>
+    <div class="actions">
+      <button id="startBtn" class="btn" style="width:auto;min-width:200px">Enable Camera & Begin</button>
+      <button id="noCamBtn" class="btn secondary" style="width:auto;min-width:180px">Skip camera — use mouse/touch</button>
+    </div>
+    <div class="badgeRow">
+      <span class="badge">Class 10: 16 molecules</span>
+      <span class="badge">Class 11: 12 molecules</span>
+      <span class="badge">Class 12: 12 molecules</span>
+      <span class="badge">Hand tracking: MediaPipe</span>
+    </div>
+    <div style="font-family:'Courier New',monospace;font-size:11px;color:var(--dim);margin-top:12px;max-width:560px">Tip: Allow camera permission on HTTPS/localhost. If camera fails, you can still drag to rotate and scroll/pinch to zoom. Use open palm (5 fingers) for 1.2s to reset view.</div>
   </div>
 
   <header>
-    <div>
+    <div class="brand">
       <div class="title">Gesture <em>Molecule</em> Lab</div>
-      <div class="sub">INSPIRE MANAK — SMART BOARD AR PROTOTYPE</div>
+      <div class="sub">INSPIRE MANAK — SMART BOARD AR • CLASS 10/11/12</div>
     </div>
+    <div class="tabs" id="classTabs">
+      <button class="tab active" data-filter="all">All (40)</button>
+      <button class="tab" data-filter="10">Class 10</button>
+      <button class="tab" data-filter="11">Class 11</button>
+      <button class="tab" data-filter="12">Class 12</button>
+    </div>
+    <input id="search" class="search" placeholder="Search molecule or formula… (e.g. benzene)">
   </header>
 
-  <div id="status"><span class="dot"></span>CAMERA OFF</div>
-  <div id="gestureHint">
-    MOVE HAND — rotate<br>
-    PINCH — zoom<br>
-    OPEN PALM — reset view
+  <div id="main">
+    <aside id="left">
+      <div class="cam-label"><span>HAND TRACKING</span><span id="fps" style="opacity:.6">— fps</span></div>
+      <div class="camWrap">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="overlay"></canvas>
+      </div>
+      <div id="status"><span class="dot"></span>CAMERA OFF</div>
+      <div id="gestureHint">
+        <b>MOVE HAND</b> — rotate molecule<br>
+        <b>PINCH</b> (thumb + index) — zoom in/out<br>
+        <b>OPEN PALM</b> — hold 1.2s to reset view<br>
+        <b>MOUSE</b> — drag rotate, scroll zoom<br>
+        <b>TOUCH</b> — 1-finger drag, 2-finger pinch
+      </div>
+      <button id="camToggle" class="btn secondary">Enable Camera</button>
+      <button id="resetView" class="btn secondary">Reset View</button>
+      <div class="hintSmall">Camera works best in good light, hand ~40-70cm from lens, plain background. If “Camera unavailable”, use mouse/touch – all molecules remain fully interactive.</div>
+    </aside>
+
+    <section id="center">
+      <div id="canvasHost"></div>
+      <div id="molInfoOverlay">
+        <div class="ov-name" id="ovName">Methane</div>
+        <div class="ov-form" id="ovForm">CH₄ · Tetrahedral</div>
+        <div class="ov-meta" id="ovMeta">Class 10 • Carbon compounds</div>
+      </div>
+      <div id="viewControls">
+        <button class="iconBtn" id="btnReset" title="Reset view">↺</button>
+        <button class="iconBtn" id="btnZoomIn" title="Zoom in">+</button>
+        <button class="iconBtn" id="btnZoomOut" title="Zoom out">−</button>
+      </div>
+    </section>
+
+    <aside id="right">
+      <div class="rightHead">
+        <h3>MOLECULE LIBRARY</h3>
+        <div class="countInfo" id="countInfo">Showing 40 molecules</div>
+      </div>
+      <div class="infoCard" id="infoCard">
+        <div class="ic-title" id="icTitle">Methane — CH₄</div>
+        <div class="ic-form" id="icFormula">Class 10 • Carbon compounds • Alkane</div>
+        <div class="ic-desc" id="icDesc">Simplest alkane, tetrahedral (109.5°). Found in biogas, natural gas. Basis for understanding sp³ hybridisation.</div>
+        <div class="ic-tags" id="icTags"></div>
+      </div>
+      <div id="molGrid"></div>
+    </aside>
   </div>
-
-  <div id="canvasHost"></div>
-  <video id="video" autoplay playsinline muted></video>
-  <canvas id="overlay" width="200" height="150"></canvas>
-  <div class="cam-label">HAND TRACKING</div>
-
-  <div id="molBar">
-    <select id="molSelect">
-      <optgroup label="Elements (diatomic)">
-        <option value="hydrogen">Hydrogen · H₂</option>
-        <option value="oxygen_gas">Oxygen · O₂</option>
-        <option value="nitrogen_gas">Nitrogen · N₂</option>
-        <option value="chlorine_gas">Chlorine · Cl₂</option>
-      </optgroup>
-      <optgroup label="Simple compounds">
-        <option value="water">Water · H₂O</option>
-        <option value="co2">Carbon Dioxide · CO₂</option>
-        <option value="ammonia">Ammonia · NH₃</option>
-        <option value="hcl">Hydrogen Chloride · HCl</option>
-      </optgroup>
-      <optgroup label="Carbon compounds">
-        <option value="methane" selected>Methane · CH₄</option>
-        <option value="ethane">Ethane · C₂H₆</option>
-        <option value="ethene">Ethene · C₂H₄</option>
-        <option value="ethyne">Ethyne · C₂H₂</option>
-        <option value="methanol">Methanol · CH₃OH</option>
-        <option value="ethanol">Ethanol · C₂H₅OH</option>
-        <option value="acetic_acid">Acetic Acid · CH₃COOH</option>
-      </optgroup>
-    </select>
-  </div>
-
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mediapipe/hands/hands.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mediapipe/camera_utils/camera_utils.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 <script>
-// ---------- THREE.JS SCENE ----------
-const host = document.getElementById('canvasHost');
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
-camera.position.set(0, 0, 9);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, canvas: (() => {
-  const c = document.createElement('canvas'); c.id = 'three'; return c;
-})() });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
+// ---------- THREE SETUP ----------
+const host=document.getElementById('canvasHost');
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(45, host.clientWidth/host.clientHeight||16/9, 0.1, 100);
+camera.position.set(0,0,9);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,canvas:(()=>{const c=document.createElement('canvas');c.id='three';return c})()});
+renderer.setSize(host.clientWidth, host.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 host.appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0x445544,1.1));
+const key=new THREE.PointLight(0xffffff,1.15); key.position.set(6,8,10); scene.add(key);
+const rim=new THREE.PointLight(0xd4a24e,0.35); rim.position.set(-6,-4, -5); scene.add(rim);
+const molGroup=new THREE.Group(); scene.add(molGroup);
 
-const key = new THREE.PointLight(0xffffff, 1.1);
-key.position.set(6, 8, 10);
-scene.add(key);
-scene.add(new THREE.AmbientLight(0x445544, 1.1));
-
-const molGroup = new THREE.Group();
-scene.add(molGroup);
-
-const MATS = {
-  C: new THREE.MeshStandardMaterial({ color: 0x3d3d3d, roughness: 0.4 }),
-  H: new THREE.MeshStandardMaterial({ color: 0xeef2ea, roughness: 0.5 }),
-  O: new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.4 }),
-  N: new THREE.MeshStandardMaterial({ color: 0x2f6fa3, roughness: 0.4 }),
-  Cl: new THREE.MeshStandardMaterial({ color: 0x7db24a, roughness: 0.4 }),
-  bond: new THREE.MeshStandardMaterial({ color: 0x7d9186, roughness: 0.6 })
+// materials & radii
+const MATS={
+  C:new THREE.MeshStandardMaterial({color:0x3d3d3d,roughness:0.42}),
+  H:new THREE.MeshStandardMaterial({color:0xeef2ea,roughness:0.5}),
+  O:new THREE.MeshStandardMaterial({color:0xc0392b,roughness:0.38}),
+  N:new THREE.MeshStandardMaterial({color:0x2f6fa3,roughness:0.4}),
+  Cl:new THREE.MeshStandardMaterial({color:0x7db24a,roughness:0.4}),
+  F:new THREE.MeshStandardMaterial({color:0x8ed0a0,roughness:0.4}),
+  S:new THREE.MeshStandardMaterial({color:0xd4a24e,roughness:0.45}),
+  P:new THREE.MeshStandardMaterial({color:0xd67d2a,roughness:0.4}),
+  Na:new THREE.MeshStandardMaterial({color:0x8a5bd6,roughness:0.4}),
+  Ca:new THREE.MeshStandardMaterial({color:0x7aa7c7,roughness:0.4}),
+  Be:new THREE.MeshStandardMaterial({color:0x6b8f7a,roughness:0.4}),
+  B:new THREE.MeshStandardMaterial({color:0xc97a6a,roughness:0.4}),
+  bond:new THREE.MeshStandardMaterial({color:0x7d9186,roughness:0.6})
 };
-const RADII = { C: 0.62, H: 0.34, O: 0.56, N: 0.58, Cl: 0.74 };
+const RADII={ C:0.62, H:0.34, O:0.56, N:0.58, Cl:0.74, F:0.52, S:0.78, P:0.82, Na:0.78, Ca:0.92, Be:0.56, B:0.60 };
+const LABEL_COLORS={ C:'#eef2ea', H:'#14201c', O:'#eef2ea', N:'#eef2ea', Cl:'#14201c', F:'#14201c', S:'#14201c', P:'#eef2ea', Na:'#eef2ea', Ca:'#14201c', Be:'#14201c', B:'#14201c' };
 
-const LABEL_COLORS = { C: '#eef2ea', H: '#14201c', O: '#eef2ea', N: '#eef2ea', Cl: '#14201c' };
-
-function makeLabelSprite(elem) {
-  const size = 128;
-  const canvas = document.createElement('canvas');
-  canvas.width = size; canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.font = '700 74px Georgia, serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = LABEL_COLORS[elem];
-  ctx.fillText(elem, size/2, size/2 + 4);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.needsUpdate = true;
-  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: true, transparent: true });
-  const sprite = new THREE.Sprite(mat);
-  const s = RADII[elem] * 1.05;
-  sprite.scale.set(s, s, s);
-  return sprite;
+function makeLabelSprite(elem){
+  const size=128; const c=document.createElement('canvas'); c.width=size; c.height=size;
+  const ctx=c.getContext('2d'); ctx.font='700 74px Georgia, serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle=LABEL_COLORS[elem]||'#eef2ea'; ctx.fillText(elem,size/2,size/2+4);
+  const tex=new THREE.CanvasTexture(c); tex.needsUpdate=true;
+  const mat=new THREE.SpriteMaterial({map:tex,depthTest:true,transparent:true});
+  const s=new THREE.Sprite(mat); const r=RADII[elem]||0.5; s.scale.set(r*1.05,r*1.05,r*1.05); return s;
 }
-
-let labeledAtoms = [];
-
-function makeAtom(elem, pos) {
-  const geo = new THREE.SphereGeometry(RADII[elem], 32, 32);
-  const mesh = new THREE.Mesh(geo, MATS[elem]);
-  mesh.position.copy(pos);
-  mesh.renderOrder = 1;
-  const label = makeLabelSprite(elem);
-  label.renderOrder = 2;
-  mesh.add(label);
-  labeledAtoms.push({ atom: mesh, label: label, radius: RADII[elem] + 0.03 });
+let labeledAtoms=[];
+function makeAtom(elem,pos){
+  const geo=new THREE.SphereGeometry(RADII[elem]||0.5,32,32);
+  const mesh=new THREE.Mesh(geo,MATS[elem]||MATS.C); mesh.position.copy(pos); mesh.renderOrder=1;
+  const label=makeLabelSprite(elem); label.renderOrder=2; mesh.add(label);
+  labeledAtoms.push({atom:mesh,label:label,radius:(RADII[elem]||0.5)+0.03});
   return mesh;
 }
+function makeBond(p1,p2,thin){
+  const dir=new THREE.Vector3().subVectors(p2,p1); const len=dir.length();
+  const geo=new THREE.CylinderGeometry(thin?0.06:0.10,thin?0.06:0.10,len,12);
+  const m=new THREE.Mesh(geo,MATS.bond); m.position.copy(p1).add(dir.clone().multiplyScalar(0.5));
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize()); return m;
+}
+function updateLabelPositions(){
+  const camW=new THREE.Vector3(); camera.getWorldPosition(camW);
+  const inv=molGroup.quaternion.clone().invert(); const aw=new THREE.Vector3(); const dir=new THREE.Vector3();
+  labeledAtoms.forEach(e=>{ e.atom.getWorldPosition(aw); dir.copy(camW).sub(aw).normalize().applyQuaternion(inv); e.label.position.copy(dir).multiplyScalar(e.radius); });
+}
 
-function updateLabelPositions() {
-  const camWorld = new THREE.Vector3();
-  camera.getWorldPosition(camWorld);
-  const groupQuatInverse = molGroup.quaternion.clone().invert();
-  const atomWorld = new THREE.Vector3();
-  const dir = new THREE.Vector3();
-  labeledAtoms.forEach(entry => {
-    entry.atom.getWorldPosition(atomWorld);
-    dir.copy(camWorld).sub(atomWorld).normalize();
-    dir.applyQuaternion(groupQuatInverse);
-    entry.label.position.copy(dir).multiplyScalar(entry.radius);
+// ---------- MOLECULE BUILDERS ----------
+const B={};
+
+B.hydrogen=()=>{
+  const g=new THREE.Group(); const p1=new THREE.Vector3(-0.5,0,0),p2=new THREE.Vector3(0.5,0,0);
+  g.add(makeAtom('H',p1)); g.add(makeAtom('H',p2)); g.add(makeBond(p1,p2,true)); return g;
+};
+B.oxygen_gas=()=>{
+  const g=new THREE.Group(); const p1=new THREE.Vector3(-0.6,0,0),p2=new THREE.Vector3(0.6,0,0);
+  g.add(makeAtom('O',p1)); g.add(makeAtom('O',p2)); g.add(makeBond(p1,p2,false)); return g;
+};
+B.nitrogen_gas=()=>{
+  const g=new THREE.Group(); const p1=new THREE.Vector3(-0.6,0,0),p2=new THREE.Vector3(0.6,0,0);
+  g.add(makeAtom('N',p1)); g.add(makeAtom('N',p2)); g.add(makeBond(p1,p2,false)); return g;
+};
+B.chlorine_gas=()=>{
+  const g=new THREE.Group(); const p1=new THREE.Vector3(-0.9,0,0),p2=new THREE.Vector3(0.9,0,0);
+  g.add(makeAtom('Cl',p1)); g.add(makeAtom('Cl',p2)); g.add(makeBond(p1,p2,false)); return g;
+};
+B.hcl=()=>{
+  const g=new THREE.Group(); const h=new THREE.Vector3(-0.7,0,0), cl=new THREE.Vector3(0.7,0,0);
+  g.add(makeAtom('H',h)); g.add(makeAtom('Cl',cl)); g.add(makeBond(h,cl,true)); return g;
+};
+B.water=()=>{
+  const g=new THREE.Group(); const o=new THREE.Vector3(0,0.32,0),h1=new THREE.Vector3(-0.95,-0.75,0),h2=new THREE.Vector3(0.95,-0.75,0);
+  g.add(makeAtom('O',o)); g.add(makeAtom('H',h1)); g.add(makeAtom('H',h2)); g.add(makeBond(o,h1,true)); g.add(makeBond(o,h2,true)); return g;
+};
+B.co2=()=>{
+  const g=new THREE.Group(); const c=new THREE.Vector3(0,0,0),o1=new THREE.Vector3(-1.75,0,0),o2=new THREE.Vector3(1.75,0,0);
+  g.add(makeAtom('C',c)); g.add(makeAtom('O',o1)); g.add(makeAtom('O',o2)); g.add(makeBond(c,o1,false)); g.add(makeBond(c,o2,false)); return g;
+};
+B.ammonia=()=>{
+  const g=new THREE.Group(); const n=new THREE.Vector3(0,0.35,0),h1=new THREE.Vector3(1.05,-0.55,0),h2=new THREE.Vector3(-0.52,-0.55,0.9),h3=new THREE.Vector3(-0.52,-0.55,-0.9);
+  g.add(makeAtom('N',n)); [h1,h2,h3].forEach(h=>{g.add(makeAtom('H',h)); g.add(makeBond(n,h,true));}); return g;
+};
+B.methane=()=>{
+  const g=new THREE.Group(); const c=new THREE.Vector3(0,0,0); g.add(makeAtom('C',c));
+  const hs=[new THREE.Vector3(1.2,1.2,1.2),new THREE.Vector3(-1.2,-1.2,1.2),new THREE.Vector3(-1.2,1.2,-1.2),new THREE.Vector3(1.2,-1.2,-1.2)];
+  hs.forEach(p=>{g.add(makeAtom('H',p)); g.add(makeBond(c,p,true));}); return g;
+};
+B.ethane=()=>{
+  const g=new THREE.Group(); const c1=new THREE.Vector3(-0.75,0,0),c2=new THREE.Vector3(0.75,0,0); g.add(makeAtom('C',c1)); g.add(makeAtom('C',c2)); g.add(makeBond(c1,c2,false));
+  const h1=[new THREE.Vector3(-1.4,0.9,0.6),new THREE.Vector3(-1.4,-0.5,0.95),new THREE.Vector3(-1.4,-0.5,-0.95)];
+  const h2=[new THREE.Vector3(1.4,0.9,-0.6),new THREE.Vector3(1.4,-0.5,-0.95),new THREE.Vector3(1.4,-0.5,0.95)];
+  h1.forEach(h=>{g.add(makeAtom('H',h)); g.add(makeBond(c1,h,true));}); h2.forEach(h=>{g.add(makeAtom('H',h)); g.add(makeBond(c2,h,true));}); return g;
+};
+B.ethene=()=>{
+  const g=new THREE.Group(); const c1=new THREE.Vector3(-0.7,0,0),c2=new THREE.Vector3(0.7,0,0); g.add(makeAtom('C',c1)); g.add(makeAtom('C',c2)); g.add(makeBond(c1,c2,false));
+  const h1=[new THREE.Vector3(-1.3,0.95,0),new THREE.Vector3(-1.3,-0.95,0)], h2=[new THREE.Vector3(1.3,0.95,0),new THREE.Vector3(1.3,-0.95,0)];
+  h1.forEach(h=>{g.add(makeAtom('H',h)); g.add(makeBond(c1,h,true));}); h2.forEach(h=>{g.add(makeAtom('H',h)); g.add(makeBond(c2,h,true));}); return g;
+};
+B.ethyne=()=>{
+  const g=new THREE.Group(); const c1=new THREE.Vector3(-0.6,0,0),c2=new THREE.Vector3(0.6,0,0),h1=new THREE.Vector3(-1.6,0,0),h2=new THREE.Vector3(1.6,0,0);
+  g.add(makeAtom('C',c1)); g.add(makeAtom('C',c2)); g.add(makeBond(c1,c2,false)); g.add(makeAtom('H',h1)); g.add(makeBond(c1,h1,true)); g.add(makeAtom('H',h2)); g.add(makeBond(c2,h2,true)); return g;
+};
+B.methanol=()=>{
+  const g=new THREE.Group(); const c=new THREE.Vector3(-0.6,0,0),o=new THREE.Vector3(0.8,0,0),oh=new THREE.Vector3(1.4,0.8,0);
+  g.add(makeAtom('C',c)); g.add(makeAtom('O',o)); g.add(makeBond(c,o,false)); g.add(makeAtom('H',oh)); g.add(makeBond(o,oh,true));
+  const hs=[new THREE.Vector3(-1.3,0.9,0.5),new THREE.Vector3(-1.3,-0.6,0.95),new THREE.Vector3(-1.3,-0.6,-0.95)];
+  hs.forEach(h=>{g.add(makeAtom('H',h)); g.add(makeBond(c,h,true));}); return g;
+};
+B.ethanol=()=>{
+  const g=new THREE.Group(); const c1=new THREE.Vector3(-1.5,0,0),c2=new THREE.Vector3(-0.1,0,0),o=new THREE.Vector3(1.2,0.3,0),oh=new THREE.Vector3(1.9,1.0,0);
+  g.add(makeAtom('C',c1)); g.add(makeAtom('C',c2)); g.add(makeBond(c1,c2,false)); g.add(makeAtom('O',o)); g.add(makeBond(c2,o,false)); g.add(makeAtom('H',oh)); g.add(makeBond(o,oh,true));
+  const h1=[new THREE.Vector3(-2.2,0.9,0.5),new THREE.Vector3(-2.2,-0.5,0.95),new THREE.Vector3(-2.2,-0.5,-0.95)];
+  h1.forEach(h=>{g.add(makeAtom('H',h)); g.add(makeBond(c1,h,true));});
+  const h2=[new THREE.Vector3(-0.1,0.9,0.7),new THREE.Vector3(-0.1,0.9,-0.7)];
+  h2.forEach(h=>{g.add(makeAtom('H',h)); g.add(makeBond(c2,h,true));}); return g;
+};
+B.acetic_acid=()=>{
+  const g=new THREE.Group(); const c1=new THREE.Vector3(-1.3,0,0),c2=new THREE.Vector3(0,0,0),oD=new THREE.Vector3(0.4,1.0,0),oS=new THREE.Vector3(0.9,-0.8,0),h=new THREE.Vector3(1.8,-0.8,0);
+  g.add(makeAtom('C',c1)); g.add(makeAtom('C',c2)); g.add(makeBond(c1,c2,false)); g.add(makeAtom('O',oD)); g.add(makeBond(c2,oD,false)); g.add(makeAtom('O',oS)); g.add(makeBond(c2,oS,false)); g.add(makeAtom('H',h)); g.add(makeBond(oS,h,true));
+  const hs=[new THREE.Vector3(-2.0,0.9,0.5),new THREE.Vector3(-2.0,-0.5,0.95),new THREE.Vector3(-2.0,-0.5,-0.95)];
+  hs.forEach(v=>{g.add(makeAtom('H',v)); g.add(makeBond(c1,v,true));}); return g;
+};
+// ---- new builders for Class 10 extra ----
+B.nacl=()=>{
+  const g=new THREE.Group(); const na=new THREE.Vector3(-0.8,0,0), cl=new THREE.Vector3(0.8,0,0);
+  g.add(makeAtom('Na',na)); g.add(makeAtom('Cl',cl)); g.add(makeBond(na,cl,true)); return g;
+};
+B.h2so4=()=>{
+  const g=new THREE.Group(); const s=new THREE.Vector3(0,0,0), o1=new THREE.Vector3(0,1.35,0), o2=new THREE.Vector3(0,-1.35,0), o3=new THREE.Vector3(1.35,0,0), o4=new THREE.Vector3(-1.35,0,0), h1=new THREE.Vector3(2.05,0.55,0), h2=new THREE.Vector3(-2.05,-0.55,0);
+  g.add(makeAtom('S',s)); [o1,o2,o3,o4].forEach(o=>g.add(makeAtom('O',o)));
+  g.add(makeBond(s,o1,false)); g.add(makeBond(s,o2,false)); g.add(makeBond(s,o3,false)); g.add(makeBond(s,o4,false));
+  g.add(makeAtom('H',h1)); g.add(makeBond(o3,h1,true)); g.add(makeAtom('H',h2)); g.add(makeBond(o4,h2,true)); return g;
+};
+B.hno3=()=>{
+  const g=new THREE.Group(); const n=new THREE.Vector3(0,0.4,0), o1=new THREE.Vector3(0,1.55,0), h=new THREE.Vector3(0.45,2.25,0), o2=new THREE.Vector3(-1.05,-0.25,0), o3=new THREE.Vector3(1.05,-0.25,0);
+  g.add(makeAtom('N',n)); g.add(makeAtom('O',o1)); g.add(makeAtom('O',o2)); g.add(makeAtom('O',o3)); g.add(makeAtom('H',h));
+  g.add(makeBond(n,o1,true)); g.add(makeBond(n,o2,false)); g.add(makeBond(n,o3,false)); g.add(makeBond(o1,h,true)); return g;
+};
+B.calcium_carbonate=()=>{
+  const g=new THREE.Group(); const ca=new THREE.Vector3(-1.8,0,0), c=new THREE.Vector3(0.3,0,0), o1=new THREE.Vector3(0.3,1.2,0), o2=new THREE.Vector3(1.35,-0.45,0), o3=new THREE.Vector3(-0.75,-0.45,0);
+  g.add(makeAtom('Ca',ca)); g.add(makeAtom('C',c)); g.add(makeAtom('O',o1)); g.add(makeAtom('O',o2)); g.add(makeAtom('O',o3));
+  g.add(makeBond(c,o1,false)); g.add(makeBond(c,o2,false)); g.add(makeBond(c,o3,false)); g.add(makeBond(ca,c,true)); return g;
+};
+// ---- Class 11 ----
+B.bf3=()=>{
+  const g=new THREE.Group(); const b=new THREE.Vector3(0,0,0), f1=new THREE.Vector3(1.45,0,0), f2=new THREE.Vector3(-0.73,1.26,0), f3=new THREE.Vector3(-0.73,-1.26,0);
+  g.add(makeAtom('B',b)); [f1,f2,f3].forEach(f=>{g.add(makeAtom('F',f)); g.add(makeBond(b,f,true));}); return g;
+};
+B.becl2=()=>{
+  const g=new THREE.Group(); const be=new THREE.Vector3(0,0,0), cl1=new THREE.Vector3(-1.6,0,0), cl2=new THREE.Vector3(1.6,0,0);
+  g.add(makeAtom('Be',be)); g.add(makeAtom('Cl',cl1)); g.add(makeAtom('Cl',cl2)); g.add(makeBond(be,cl1,false)); g.add(makeBond(be,cl2,false)); return g;
+};
+B.pcl5=()=>{
+  const g=new THREE.Group(); const p=new THREE.Vector3(0,0,0);
+  const pts=[new THREE.Vector3(1.6,0,0),new THREE.Vector3(-1.6,0,0),new THREE.Vector3(0,1.6,0),new THREE.Vector3(0.8, -0.9,1.38),new THREE.Vector3(0.8,-0.9,-1.38)];
+  g.add(makeAtom('P',p)); pts.forEach(v=>{g.add(makeAtom('Cl',v)); g.add(makeBond(p,v,false));}); return g;
+};
+B.sf6=()=>{
+  const g=new THREE.Group(); const s=new THREE.Vector3(0,0,0);
+  const pts=[new THREE.Vector3(1.7,0,0),new THREE.Vector3(-1.7,0,0),new THREE.Vector3(0,1.7,0),new THREE.Vector3(0,-1.7,0),new THREE.Vector3(0,0,1.7),new THREE.Vector3(0,0,-1.7)];
+  g.add(makeAtom('S',s)); pts.forEach(v=>{g.add(makeAtom('F',v)); g.add(makeBond(s,v,false));}); return g;
+};
+B.benzene=()=>{
+  const g=new THREE.Group(); const R=1.45; const carbons=[];
+  for(let i=0;i<6;i++){ const a=i*Math.PI/3; const p=new THREE.Vector3(Math.cos(a)*R, Math.sin(a)*R, 0); carbons.push(p); g.add(makeAtom('C',p)); }
+  for(let i=0;i<6;i++){ const a=i*Math.PI/3; const p=new THREE.Vector3(Math.cos(a)*(R+0.95), Math.sin(a)*(R+0.95), 0); g.add(makeAtom('H',p)); g.add(makeBond(carbons[i],p,true)); }
+  for(let i=0;i<6;i++) g.add(makeBond(carbons[i], carbons[(i+1)%6], false));
+  return g;
+};
+B.formaldehyde=()=>{
+  const g=new THREE.Group(); const c=new THREE.Vector3(0,0.35,0), o=new THREE.Vector3(0,1.65,0), h1=new THREE.Vector3(-1.05,-0.45,0), h2=new THREE.Vector3(1.05,-0.45,0);
+  g.add(makeAtom('C',c)); g.add(makeAtom('O',o)); g.add(makeBond(c,o,false)); g.add(makeAtom('H',h1)); g.add(makeBond(c,h1,true)); g.add(makeAtom('H',h2)); g.add(makeBond(c,h2,true)); return g;
+};
+B.ozone=()=>{
+  const g=new THREE.Group(); const c=new THREE.Vector3(0,0.4,0), o1=new THREE.Vector3(-1.15,-0.45,0), o2=new THREE.Vector3(1.15,-0.45,0);
+  g.add(makeAtom('O',c)); g.add(makeAtom('O',o1)); g.add(makeAtom('O',o2)); g.add(makeBond(c,o1,false)); g.add(makeBond(c,o2,false)); return g;
+};
+B.nacl_ion=()=>B.nacl(); // alias
+B.ammonia_bf3_adduct=()=>{ // reused as generic
+  return B.bf3();
+};
+// Additional class 11: ethene etc already exist, add propene-like? We'll add ethene/benzene already
+B.acetylene=()=>B.ethyne();
+// ---- Class 12 ----
+B.phenol=()=>{
+  const g=new THREE.Group(); const R=1.35;
+  const carbons=[]; for(let i=0;i<6;i++){ const a=i*Math.PI/3; const p=new THREE.Vector3(Math.cos(a)*R, Math.sin(a)*R, 0); carbons.push(p); g.add(makeAtom('C',p)); }
+  for(let i=0;i<6;i++) g.add(makeBond(carbons[i], carbons[(i+1)%6], false));
+  // H on 5 carbons, OH on one
+  for(let i=1;i<6;i++){ const a=i*Math.PI/3; const hp=new THREE.Vector3(Math.cos(a)*(R+0.95), Math.sin(a)*(R+0.95),0); g.add(makeAtom('H',hp)); g.add(makeBond(carbons[i],hp,true));}
+  const oPos=new THREE.Vector3((R+0.95)*Math.cos(0), (R+0.95)*Math.sin(0),0); // replace H0 with O
+  // shift O outward a bit more
+  const o=new THREE.Vector3(oPos.x+0.45, oPos.y, 0); const oh=new THREE.Vector3(o.x+0.8, o.y+0.45,0);
+  g.add(makeAtom('O',o)); g.add(makeBond(carbons[0],o,false)); g.add(makeAtom('H',oh)); g.add(makeBond(o,oh,true)); return g;
+};
+B.aniline=()=>{
+  const g=new THREE.Group(); const R=1.35; const carbons=[];
+  for(let i=0;i<6;i++){ const a=i*Math.PI/3; const p=new THREE.Vector3(Math.cos(a)*R, Math.sin(a)*R,0); carbons.push(p); g.add(makeAtom('C',p));}
+  for(let i=0;i<6;i++) g.add(makeBond(carbons[i],carbons[(i+1)%6],false));
+  for(let i=1;i<6;i++){ const a=i*Math.PI/3; const hp=new THREE.Vector3(Math.cos(a)*(R+0.95), Math.sin(a)*(R+0.95),0); g.add(makeAtom('H',hp)); g.add(makeBond(carbons[i],hp,true));}
+  const n=new THREE.Vector3(R+1.35,0,0); const h1=new THREE.Vector3(n.x+0.55, n.y+0.75,0), h2=new THREE.Vector3(n.x+0.55, n.y-0.75,0);
+  g.add(makeAtom('N',n)); g.add(makeBond(carbons[0],n,false)); g.add(makeAtom('H',h1)); g.add(makeBond(n,h1,true)); g.add(makeAtom('H',h2)); g.add(makeBond(n,h2,true)); return g;
+};
+B.chloroform=()=>{
+  const g=new THREE.Group(); const c=new THREE.Vector3(0,0,0), h=new THREE.Vector3(0,1.25,0), cl1=new THREE.Vector3(1.18,-0.55,0), cl2=new THREE.Vector3(-0.59,-0.55,1.02), cl3=new THREE.Vector3(-0.59,-0.55,-1.02);
+  g.add(makeAtom('C',c)); g.add(makeAtom('H',h)); g.add(makeBond(c,h,true)); [cl1,cl2,cl3].forEach(v=>{g.add(makeAtom('Cl',v)); g.add(makeBond(c,v,true));}); return g;
+};
+B.carbon_tetra=()=>{
+  const g=new THREE.Group(); const c=new THREE.Vector3(0,0,0); g.add(makeAtom('C',c));
+  const cls=[new THREE.Vector3(1.2,1.2,1.2),new THREE.Vector3(-1.2,-1.2,1.2),new THREE.Vector3(-1.2,1.2,-1.2),new THREE.Vector3(1.2,-1.2,-1.2)];
+  cls.forEach(v=>{g.add(makeAtom('Cl',v)); g.add(makeBond(c,v,true));}); return g;
+};
+B.acetone=()=>{
+  const g=new THREE.Group(); const c1=new THREE.Vector3(-1.35,0,0), c2=new THREE.Vector3(0,0,0), o=new THREE.Vector3(0,1.35,0), c3=new THREE.Vector3(1.35,0,0);
+  g.add(makeAtom('C',c1)); g.add(makeAtom('C',c2)); g.add(makeAtom('C',c3)); g.add(makeAtom('O',o));
+  g.add(makeBond(c1,c2,false)); g.add(makeBond(c2,c3,false)); g.add(makeBond(c2,o,false));
+  const h1=[new THREE.Vector3(-2.05,0.85,0.45),new THREE.Vector3(-2.05,-0.45,1.0),new THREE.Vector3(-2.05,-0.45,-1.0)];
+  const h3=[new THREE.Vector3(2.05,0.85,-0.45),new THREE.Vector3(2.05,-0.45,-1.0),new THREE.Vector3(2.05,-0.45,1.0)];
+  h1.forEach(h=>{g.add(makeAtom('H',h)); g.add(makeBond(c1,h,true));}); h3.forEach(h=>{g.add(makeAtom('H',h)); g.add(makeBond(c3,h,true));}); return g;
+};
+B.urea=()=>{
+  const g=new THREE.Group(); const c=new THREE.Vector3(0,0.35,0), o=new THREE.Vector3(0,1.6,0), n1=new THREE.Vector3(-1.15,-0.45,0), n2=new THREE.Vector3(1.15,-0.45,0);
+  g.add(makeAtom('C',c)); g.add(makeAtom('O',o)); g.add(makeBond(c,o,false)); g.add(makeAtom('N',n1)); g.add(makeBond(c,n1,false)); g.add(makeAtom('N',n2)); g.add(makeBond(c,n2,false));
+  const hA=[new THREE.Vector3(-1.85,0.15,0), new THREE.Vector3(-1.45,-1.25,0)], hB=[new THREE.Vector3(1.85,0.15,0), new THREE.Vector3(1.45,-1.25,0)];
+  hA.forEach(h=>{g.add(makeAtom('H',h)); g.add(makeBond(n1,h,true));}); hB.forEach(h=>{g.add(makeAtom('H',h)); g.add(makeBond(n2,h,true));}); return g;
+};
+B.ethanol_12=()=>B.ethanol();
+B.glycerol=()=>{
+  const g=new THREE.Group(); const c1=new THREE.Vector3(-1.4,0,0), c2=new THREE.Vector3(0,0,0), c3=new THREE.Vector3(1.4,0,0);
+  g.add(makeAtom('C',c1)); g.add(makeAtom('C',c2)); g.add(makeAtom('C',c3)); g.add(makeBond(c1,c2,false)); g.add(makeBond(c2,c3,false));
+  const o1=new THREE.Vector3(-1.4,1.25,0), o2=new THREE.Vector3(0,1.25,0), o3=new THREE.Vector3(1.4,1.25,0);
+  [ [c1,o1],[c2,o2],[c3,o3] ].forEach(([a,b])=>{ const h=new THREE.Vector3(b.x+0.35,b.y+0.7,0); g.add(makeAtom('O',b)); g.add(makeBond(a,b,false)); g.add(makeAtom('H',h)); g.add(makeBond(b,h,true)); });
+  // hydrogens on carbons
+  const hPositions=[ new THREE.Vector3(-1.9,-0.9,0.6), new THREE.Vector3(-1.9,-0.9,-0.6), new THREE.Vector3(0,-0.95,0.7), new THREE.Vector3(0,-0.95,-0.7), new THREE.Vector3(1.9,-0.9,0.6), new THREE.Vector3(1.9,-0.9,-0.6) ];
+  // simplified: just add 5 H to show
+  const carbons=[c1,c1,c2,c3,c3]; // 5 H needed (C3H8O3 gives 5 C-H + 3 O-H already =8)
+  // we already added O-H, now add C-H
+  const ch=[new THREE.Vector3(-1.9,-0.9,0), new THREE.Vector3(-1.0,-0.95,0.55), new THREE.Vector3(0.3,-0.95,-0.55), new THREE.Vector3(1.0,-0.95,0.55), new THREE.Vector3(1.9,-0.9,0)];
+  // attach roughly
+  g.add(makeAtom('H',new THREE.Vector3(-1.95,-0.9,0.5))); g.add(makeBond(c1,new THREE.Vector3(-1.95,-0.9,0.5),true));
+  g.add(makeAtom('H',new THREE.Vector3(-1.95,-0.9,-0.5))); g.add(makeBond(c1,new THREE.Vector3(-1.95,-0.9,-0.5),true));
+  g.add(makeAtom('H',new THREE.Vector3(0,-0.95,0.75))); g.add(makeBond(c2,new THREE.Vector3(0,-0.95,0.75),true));
+  g.add(makeAtom('H',new THREE.Vector3(1.95,-0.9,0.5))); g.add(makeBond(c3,new THREE.Vector3(1.95,-0.9,0.5),true));
+  g.add(makeAtom('H',new THREE.Vector3(1.95,-0.9,-0.5))); g.add(makeBond(c3,new THREE.Vector3(1.95,-0.9,-0.5),true));
+  return g;
+};
+B.benzaldehyde=()=>{
+  const g=new THREE.Group(); const R=1.35; const carbons=[];
+  for(let i=0;i<6;i++){ const a=i*Math.PI/3; const p=new THREE.Vector3(Math.cos(a)*R, Math.sin(a)*R,0); carbons.push(p); g.add(makeAtom('C',p));}
+  for(let i=0;i<6;i++) g.add(makeBond(carbons[i],carbons[(i+1)%6],false));
+  for(let i=1;i<6;i++){ const a=i*Math.PI/3; const hp=new THREE.Vector3(Math.cos(a)*(R+0.95), Math.sin(a)*(R+0.95),0); g.add(makeAtom('H',hp)); g.add(makeBond(carbons[i],hp,true));}
+  const cAld=new THREE.Vector3(R+1.25,0,0), o=new THREE.Vector3(cAld.x+1.05,0.55,0), h=new THREE.Vector3(cAld.x+0.55,-0.95,0);
+  g.add(makeAtom('C',cAld)); g.add(makeBond(carbons[0],cAld,false)); g.add(makeAtom('O',o)); g.add(makeBond(cAld,o,false)); g.add(makeAtom('H',h)); g.add(makeBond(cAld,h,true)); return g;
+};
+
+// ---------- METADATA ----------
+const META={
+  hydrogen:{name:'Hydrogen',formula:'H₂',cls:10,cat:'Elements (diatomic)',desc:'Diatomic element, gas at room temp. Class 10: Elements & non-metals.'},
+  oxygen_gas:{name:'Oxygen',formula:'O₂',cls:10,cat:'Elements (diatomic)',desc:'Essential for respiration & combustion. Double bond, paramagnetic.'},
+  nitrogen_gas:{name:'Nitrogen',formula:'N₂',cls:10,cat:'Elements (diatomic)',desc:'Triple bond, inert major component of air. Basis for ammonia synthesis.'},
+  chlorine_gas:{name:'Chlorine',formula:'Cl₂',cls:10,cat:'Elements (diatomic)',desc:'Halogens, disinfectant, Class 10 acids/bases context.'},
+  hcl:{name:'Hydrogen Chloride',formula:'HCl',cls:10,cat:'Acids & salts',desc:'Strong acid in water, stomach acid, Class 10 acids.'},
+  water:{name:'Water',formula:'H₂O',cls:10,cat:'Simple compounds',desc:'Bent 104.5°, H-bonding, universal solvent. Class 10 chemical reactions.'},
+  co2:{name:'Carbon Dioxide',formula:'CO₂',cls:10,cat:'Simple compounds',desc:'Linear, greenhouse gas, product of combustion & respiration.'},
+  ammonia:{name:'Ammonia',formula:'NH₃',cls:10,cat:'Simple compounds',desc:'Trigonal pyramidal, weak base, fertilizer production.'},
+  nacl:{name:'Sodium Chloride',formula:'NaCl',cls:10,cat:'Salts',desc:'Ionic lattice, common salt. Class 10: acids, bases & salts.'},
+  h2so4:{name:'Sulphuric Acid',formula:'H₂SO₄',cls:10,cat:'Acids',desc:'Tetrahedral S, strong dehydrating acid, contact process.'},
+  hno3:{name:'Nitric Acid',formula:'HNO₃',cls:10,cat:'Acids',desc:'Planar, strong oxidising acid, Ostwald process.'},
+  calcium_carbonate:{name:'Calcium Carbonate',formula:'CaCO₃',cls:10,cat:'Salts',desc:'Limestone/chalk, trigonal planar CO₃²⁻. Class 10: salts & pH.'},
+  methane:{name:'Methane',formula:'CH₄',cls:10,cat:'Carbon compounds',desc:'Tetrahedral alkane, biogas. sp³, Class 10 carbon.'},
+  ethane:{name:'Ethane',formula:'C₂H₆',cls:10,cat:'Carbon compounds',desc:'Single C–C, free rotation, saturated hydrocarbon.'},
+  ethene:{name:'Ethene',formula:'C₂H₄',cls:10,cat:'Carbon compounds',desc:'C=C, planar, unsaturated, polymerisation to polythene.'},
+  ethyne:{name:'Ethyne',formula:'C₂H₂',cls:10,cat:'Carbon compounds',desc:'C≡C linear, acetylene, welding gas.'},
+  methanol:{name:'Methanol',formula:'CH₃OH',cls:10,cat:'Carbon compounds',desc:'Simplest alcohol, toxic, solvent.'},
+  ethanol:{name:'Ethanol',formula:'C₂H₅OH',cls:10,cat:'Carbon compounds',desc:'Alcohol, fermentation, sanitizer. Class 10: functional groups.'},
+  acetic_acid:{name:'Acetic Acid',formula:'CH₃COOH',cls:10,cat:'Carbon compounds',desc:'Carboxylic acid, vinegar, esterification.'},
+
+  // class 11
+  becl2:{name:'Beryllium Chloride',formula:'BeCl₂',cls:11,cat:'Chemical bonding',desc:'Linear 180°, electron-deficient, Class 11 VSEPR.'},
+  bf3:{name:'Boron Trifluoride',formula:'BF₃',cls:11,cat:'Chemical bonding',desc:'Trigonal planar 120°, sp², Lewis acid.'},
+  ozone:{name:'Ozone',formula:'O₃',cls:11,cat:'p-Block',desc:'Bent 117°, resonance, protective layer.'},
+  formaldehyde:{name:'Formaldehyde',formula:'CH₂O',cls:11,cat:'Organic basics',desc:'Planar C=O, sp², building block.'},
+  benzene:{name:'Benzene',formula:'C₆H₆',cls:11,cat:'Hydrocarbons',desc:'Hexagonal resonance ring, aromatic, Class 11 hydrocarbons.'},
+  pcl5:{name:'Phosphorus Pentachloride',formula:'PCl₅',cls:11,cat:'Chemical bonding',desc:'Trigonal bipyramidal, sp³d, hydrolyses to POCl₃.'},
+  sf6:{name:'Sulphur Hexafluoride',formula:'SF₆',cls:11,cat:'Chemical bonding',desc:'Octahedral, sp³d², inert dense gas.'},
+
+  // keep ethane etc also valid for 11 but we have dedicated entries above; allow duplicates via extra keys mapping to same builder
+  pcl5_dup:{name:'—',hide:true},
+  // class 12
+  chloroform:{name:'Chloroform',formula:'CHCl₃',cls:12,cat:'Haloalkanes',desc:'Tetrahedral, solvent, haloalkane Class 12.'},
+  carbon_tetra:{name:'Carbon Tetrachloride',formula:'CCl₄',cls:12,cat:'Haloalkanes',desc:'Tetrahedral, non-polar solvent, extinguisher (obsolete).'},
+  phenol:{name:'Phenol',formula:'C₆H₅OH',cls:12,cat:'Alcohols & Phenols',desc:'Aromatic alcohol, acidic due to resonance, antiseptic.'},
+  aniline:{name:'Aniline',formula:'C₆H₅NH₂',cls:12,cat:'Amines',desc:'Aromatic amine, weak base, dye intermediate.'},
+  benzaldehyde:{name:'Benzaldehyde',formula:'C₆H₅CHO',cls:12,cat:'Aldehydes & Ketones',desc:'Aromatic aldehyde, almond smell, Class 12 carbonyl.'},
+  acetone:{name:'Acetone',formula:'CH₃COCH₃',cls:12,cat:'Aldehydes & Ketones',desc:'Simplest ketone, trigonal planar C=O, solvent.'},
+  urea:{name:'Urea',formula:'NH₂CONH₂',cls:12,cat:'Biomolecules',desc:'Planar C=O with two NH₂, first organic synthesised (Wöhler).'},
+  glycerol:{name:'Glycerol',formula:'C₃H₈O₃',cls:12,cat:'Alcohols & Polymers',desc:'Triol, propane-1,2,3-triol, humectant, nitroglycerin precursor.'},
+};
+
+const ORDERED_IDS=[
+  // 10
+  'hydrogen','oxygen_gas','nitrogen_gas','chlorine_gas','hcl','water','co2','ammonia','nacl','h2so4','hno3','calcium_carbonate','methane','ethane','ethene','ethyne','methanol','ethanol','acetic_acid',
+  // 11
+  'becl2','bf3','ozone','formaldehyde','benzene','pcl5','sf6',
+  // 12
+  'chloroform','carbon_tetra','phenol','aniline','benzaldehyde','acetone','urea','glycerol'
+];
+
+// Build full map including builders that may be aliases
+const BUILDER_MAP={...B, ethanol_12:B.ethanol, nacl_ion:B.nacl };
+
+// Filter meta to only ordered ids that have builder
+const MOLECULES=ORDERED_IDS.map(id=>({id, ...META[id], builder: BUILDER_MAP[id]||B[id]})).filter(m=>m.builder && !m.hide);
+
+// ---------- STATE & RENDER ----------
+let currentId='methane';
+let filterCls='all';
+let searchQ='';
+const grid=document.getElementById('molGrid');
+const countInfo=document.getElementById('countInfo');
+const icTitle=document.getElementById('icTitle');
+const icFormula=document.getElementById('icFormula');
+const icDesc=document.getElementById('icDesc');
+const icTags=document.getElementById('icTags');
+const ovName=document.getElementById('ovName');
+const ovForm=document.getElementById('ovForm');
+const ovMeta=document.getElementById('ovMeta');
+
+function loadMolecule(id){
+  const m=MOLECULES.find(x=>x.id===id); if(!m) return;
+  currentId=id;
+  while(molGroup.children.length) molGroup.remove(molGroup.children[0]);
+  labeledAtoms=[];
+  molGroup.add(m.builder());
+  // info
+  icTitle.textContent=`${m.name} — ${m.formula}`;
+  icFormula.textContent=`Class ${m.cls} • ${m.cat}`;
+  icDesc.textContent=m.desc;
+  icTags.innerHTML=`<span class="tag class">CLASS ${m.cls}</span><span class="tag">${m.cat}</span><span class="tag">${m.formula}</span>`;
+  ovName.textContent=m.name;
+  ovForm.textContent=`${m.formula} · ${m.cat}`;
+  ovMeta.textContent=`Class ${m.cls} • ${m.desc.slice(0,64)}…`;
+  // highlight grid
+  document.querySelectorAll('.molBtn').forEach(b=>b.classList.toggle('active', b.dataset.id===id));
+}
+
+function renderGrid(){
+  const q=searchQ.trim().toLowerCase();
+  let list=MOLECULES.filter(m=>{
+    if(filterCls!=='all' && String(m.cls)!==filterCls) return false;
+    if(q && !(m.name.toLowerCase().includes(q) || m.formula.toLowerCase().includes(q) || m.cat.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q))) return false;
+    return true;
   });
-}
-function makeBond(p1, p2, thin) {
-  const dir = new THREE.Vector3().subVectors(p2, p1);
-  const len = dir.length();
-  const geo = new THREE.CylinderGeometry(thin ? 0.06 : 0.1, thin ? 0.06 : 0.1, len, 12);
-  const mesh = new THREE.Mesh(geo, MATS.bond);
-  mesh.position.copy(p1).add(dir.clone().multiplyScalar(0.5));
-  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
-  return mesh;
-}
-
-const MOLECULES = {
-  hydrogen: () => {
-    const g = new THREE.Group();
-    const h1 = new THREE.Vector3(-0.5,0,0), h2 = new THREE.Vector3(0.5,0,0);
-    g.add(makeAtom('H', h1)); g.add(makeAtom('H', h2));
-    g.add(makeBond(h1, h2, true));
-    return g;
-  },
-  oxygen_gas: () => {
-    const g = new THREE.Group();
-    const o1 = new THREE.Vector3(-0.6,0,0), o2 = new THREE.Vector3(0.6,0,0);
-    g.add(makeAtom('O', o1)); g.add(makeAtom('O', o2));
-    g.add(makeBond(o1, o2, false));
-    return g;
-  },
-  nitrogen_gas: () => {
-    const g = new THREE.Group();
-    const n1 = new THREE.Vector3(-0.6,0,0), n2 = new THREE.Vector3(0.6,0,0);
-    g.add(makeAtom('N', n1)); g.add(makeAtom('N', n2));
-    g.add(makeBond(n1, n2, false));
-    return g;
-  },
-  chlorine_gas: () => {
-    const g = new THREE.Group();
-    const c1 = new THREE.Vector3(-0.9,0,0), c2 = new THREE.Vector3(0.9,0,0);
-    g.add(makeAtom('Cl', c1)); g.add(makeAtom('Cl', c2));
-    g.add(makeBond(c1, c2, false));
-    return g;
-  },
-  hcl: () => {
-    const g = new THREE.Group();
-    const h = new THREE.Vector3(-0.7,0,0), cl = new THREE.Vector3(0.7,0,0);
-    g.add(makeAtom('H', h)); g.add(makeAtom('Cl', cl));
-    g.add(makeBond(h, cl, true));
-    return g;
-  },
-  ammonia: () => {
-    const g = new THREE.Group();
-    const n = new THREE.Vector3(0,0.35,0);
-    const h1 = new THREE.Vector3(1.05,-0.55,0);
-    const h2 = new THREE.Vector3(-0.52,-0.55,0.9);
-    const h3 = new THREE.Vector3(-0.52,-0.55,-0.9);
-    g.add(makeAtom('N', n)); [h1,h2,h3].forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(n, h, true)); });
-    return g;
-  },
-  methane: () => {
-    const g = new THREE.Group();
-    const c = new THREE.Vector3(0,0,0);
-    g.add(makeAtom('C', c));
-    const hs = [
-      new THREE.Vector3(1.2,1.2,1.2), new THREE.Vector3(-1.2,-1.2,1.2),
-      new THREE.Vector3(-1.2,1.2,-1.2), new THREE.Vector3(1.2,-1.2,-1.2)
-    ];
-    hs.forEach(p => { g.add(makeAtom('H', p)); g.add(makeBond(c, p, true)); });
-    return g;
-  },
-  ethane: () => {
-    const g = new THREE.Group();
-    const c1 = new THREE.Vector3(-0.75,0,0), c2 = new THREE.Vector3(0.75,0,0);
-    g.add(makeAtom('C', c1)); g.add(makeAtom('C', c2)); g.add(makeBond(c1, c2, false));
-    const h1 = [new THREE.Vector3(-1.4,0.9,0.6), new THREE.Vector3(-1.4,-0.5,0.95), new THREE.Vector3(-1.4,-0.5,-0.95)];
-    const h2 = [new THREE.Vector3(1.4,0.9,-0.6), new THREE.Vector3(1.4,-0.5,-0.95), new THREE.Vector3(1.4,-0.5,0.95)];
-    h1.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c1, h, true)); });
-    h2.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c2, h, true)); });
-    return g;
-  },
-  ethene: () => {
-    const g = new THREE.Group();
-    const c1 = new THREE.Vector3(-0.7,0,0), c2 = new THREE.Vector3(0.7,0,0);
-    g.add(makeAtom('C', c1)); g.add(makeAtom('C', c2)); g.add(makeBond(c1, c2, false));
-    const h1 = [new THREE.Vector3(-1.3,0.95,0), new THREE.Vector3(-1.3,-0.95,0)];
-    const h2 = [new THREE.Vector3(1.3,0.95,0), new THREE.Vector3(1.3,-0.95,0)];
-    h1.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c1, h, true)); });
-    h2.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c2, h, true)); });
-    return g;
-  },
-  ethyne: () => {
-    const g = new THREE.Group();
-    const c1 = new THREE.Vector3(-0.6,0,0), c2 = new THREE.Vector3(0.6,0,0);
-    const h1 = new THREE.Vector3(-1.6,0,0), h2 = new THREE.Vector3(1.6,0,0);
-    g.add(makeAtom('C', c1)); g.add(makeAtom('C', c2)); g.add(makeBond(c1, c2, false));
-    g.add(makeAtom('H', h1)); g.add(makeBond(c1, h1, true));
-    g.add(makeAtom('H', h2)); g.add(makeBond(c2, h2, true));
-    return g;
-  },
-  methanol: () => {
-    const g = new THREE.Group();
-    const c = new THREE.Vector3(-0.6,0,0), o = new THREE.Vector3(0.8,0,0), oh = new THREE.Vector3(1.4,0.8,0);
-    g.add(makeAtom('C', c)); g.add(makeAtom('O', o)); g.add(makeBond(c, o, false));
-    g.add(makeAtom('H', oh)); g.add(makeBond(o, oh, true));
-    const hs = [new THREE.Vector3(-1.3,0.9,0.5), new THREE.Vector3(-1.3,-0.6,0.95), new THREE.Vector3(-1.3,-0.6,-0.95)];
-    hs.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c, h, true)); });
-    return g;
-  },
-  ethanol: () => {
-    const g = new THREE.Group();
-    const c1 = new THREE.Vector3(-1.5,0,0), c2 = new THREE.Vector3(-0.1,0,0), o = new THREE.Vector3(1.2,0.3,0), oh = new THREE.Vector3(1.9,1.0,0);
-    g.add(makeAtom('C', c1)); g.add(makeAtom('C', c2)); g.add(makeBond(c1, c2, false));
-    g.add(makeAtom('O', o)); g.add(makeBond(c2, o, false));
-    g.add(makeAtom('H', oh)); g.add(makeBond(o, oh, true));
-    const h1 = [new THREE.Vector3(-2.2,0.9,0.5), new THREE.Vector3(-2.2,-0.5,0.95), new THREE.Vector3(-2.2,-0.5,-0.95)];
-    h1.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c1, h, true)); });
-    const h2 = [new THREE.Vector3(-0.1,0.9,0.7), new THREE.Vector3(-0.1,0.9,-0.7)];
-    h2.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c2, h, true)); });
-    return g;
-  },
-  acetic_acid: () => {
-    const g = new THREE.Group();
-    const c1 = new THREE.Vector3(-1.3,0,0), c2 = new THREE.Vector3(0,0,0);
-    const oDouble = new THREE.Vector3(0.4,1.0,0), oSingle = new THREE.Vector3(0.9,-0.8,0), hAcid = new THREE.Vector3(1.8,-0.8,0);
-    g.add(makeAtom('C', c1)); g.add(makeAtom('C', c2)); g.add(makeBond(c1, c2, false));
-    g.add(makeAtom('O', oDouble)); g.add(makeBond(c2, oDouble, false));
-    g.add(makeAtom('O', oSingle)); g.add(makeBond(c2, oSingle, false));
-    g.add(makeAtom('H', hAcid)); g.add(makeBond(oSingle, hAcid, true));
-    const hs = [new THREE.Vector3(-2.0,0.9,0.5), new THREE.Vector3(-2.0,-0.5,0.95), new THREE.Vector3(-2.0,-0.5,-0.95)];
-    hs.forEach(h => { g.add(makeAtom('H', h)); g.add(makeBond(c1, h, true)); });
-    return g;
-  },
-  water: () => {
-    const g = new THREE.Group();
-    const o = new THREE.Vector3(0,0.3,0);
-    const h1 = new THREE.Vector3(-1.3,-0.9,0);
-    const h2 = new THREE.Vector3(1.3,-0.9,0);
-    g.add(makeAtom('O', o)); g.add(makeAtom('H', h1)); g.add(makeAtom('H', h2));
-    g.add(makeBond(o,h1,true)); g.add(makeBond(o,h2,true));
-    return g;
-  },
-  co2: () => {
-    const g = new THREE.Group();
-    const c = new THREE.Vector3(0,0,0);
-    const o1 = new THREE.Vector3(-2.0,0,0);
-    const o2 = new THREE.Vector3(2.0,0,0);
-    g.add(makeAtom('C', c)); g.add(makeAtom('O', o1)); g.add(makeAtom('O', o2));
-    g.add(makeBond(c,o1,false)); g.add(makeBond(c,o2,false));
-    return g;
+  countInfo.textContent=`Showing ${list.length} of ${MOLECULES.length} molecules` + (filterCls!=='all'?` • Class ${filterCls}`:'') + (q?` • search "${searchQ}"`:'');
+  grid.innerHTML='';
+  list.forEach(m=>{
+    const btn=document.createElement('button'); btn.className='molBtn'+(m.id===currentId?' active':''); btn.dataset.id=m.id;
+    btn.innerHTML=`<span class="mb-name">${m.name}</span><span class="mb-form">${m.formula}</span><span class="mb-cls">Class ${m.cls} • ${m.cat.split(' ')[0]}</span>`;
+    btn.addEventListener('click',()=>loadMolecule(m.id));
+    grid.appendChild(btn);
+  });
+  if(list.length===0){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--dim);font-family:Courier New,monospace;padding:20px">No molecules match filter</div>';
   }
-};
-
-let currentMol = 'methane';
-function loadMolecule(name) {
-  while (molGroup.children.length) molGroup.remove(molGroup.children[0]);
-  labeledAtoms = [];
-  molGroup.add(MOLECULES[name]());
-  currentMol = name;
 }
-loadMolecule('methane');
-
-document.getElementById('molSelect').addEventListener('change', e => {
-  loadMolecule(e.target.value);
+document.getElementById('classTabs').addEventListener('click',e=>{
+  const t=e.target.closest('.tab'); if(!t) return;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+  filterCls=t.dataset.filter; renderGrid();
 });
+document.getElementById('search').addEventListener('input',e=>{ searchQ=e.target.value; renderGrid(); });
 
-// rotation / zoom state, driven by gesture OR mouse fallback
-let targetRotY = 0.6, targetRotX = 0.3, currentZoom = 9;
-let rotY = 0.6, rotX = 0.3;
+// initial
+renderGrid(); loadMolecule('methane');
 
-function animate() {
+// ---------- 3D CONTROL ----------
+let targetRotY=0.6, targetRotX=0.3, rotY=0.6, rotX=0.3, currentZoom=9, baseZoom=9;
+function animate(){
   requestAnimationFrame(animate);
-  rotY += (targetRotY - rotY) * 0.12;
-  rotX += (targetRotX - rotX) * 0.12;
-  molGroup.rotation.y = rotY;
-  molGroup.rotation.x = rotX;
-  camera.position.z += (currentZoom - camera.position.z) * 0.12;
+  rotY+=(targetRotY-rotY)*0.11; rotX+=(targetRotX-rotX)*0.11;
+  molGroup.rotation.y=rotY; molGroup.rotation.x=rotX;
+  camera.position.z+=(currentZoom-camera.position.z)*0.12;
   updateLabelPositions();
-  renderer.render(scene, camera);
+  renderer.render(scene,camera);
 }
 animate();
-
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+window.addEventListener('resize',()=>{
+  const w=host.clientWidth, h=host.clientHeight;
+  camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h);
+});
+function resetView(){ targetRotY=0.6; targetRotX=0.3; currentZoom=baseZoom; }
+document.getElementById('resetView').addEventListener('click',resetView);
+document.getElementById('btnReset').addEventListener('click',resetView);
+document.getElementById('btnZoomIn').addEventListener('click',()=> currentZoom=Math.max(4, currentZoom-1.2));
+document.getElementById('btnZoomOut').addEventListener('click',()=> currentZoom=Math.min(16, currentZoom+1.2));
+// mouse
+let dragging=false,lastX=0,lastY=0;
+renderer.domElement.addEventListener('mousedown',e=>{dragging=true; lastX=e.clientX; lastY=e.clientY;});
+window.addEventListener('mouseup',()=>dragging=false);
+window.addEventListener('mousemove',e=>{ if(!dragging) return; targetRotY+=(e.clientX-lastX)*0.009; targetRotX+=(e.clientY-lastY)*0.009; lastX=e.clientX; lastY=e.clientY; });
+renderer.domElement.addEventListener('wheel',e=>{ currentZoom=Math.min(16,Math.max(4.2,currentZoom+e.deltaY*0.008)); e.preventDefault();},{passive:false});
+// touch
+let touchDrag=false, ltX=0, ltY=0, pinchDist=null, pinchZoom=currentZoom;
+function touchDist(a,b){ return Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY); }
+renderer.domElement.addEventListener('touchstart',e=>{
+  if(e.touches.length===1){ touchDrag=true; ltX=e.touches[0].clientX; ltY=e.touches[0].clientY; }
+  else if(e.touches.length===2){ touchDrag=false; pinchDist=touchDist(e.touches[0],e.touches[1]); pinchZoom=currentZoom; }
+  e.preventDefault();
+},{passive:false});
+renderer.domElement.addEventListener('touchmove',e=>{
+  if(e.touches.length===1 && touchDrag){ const t=e.touches[0]; targetRotY+=(t.clientX-ltX)*0.01; targetRotX+=(t.clientY-ltY)*0.01; ltX=t.clientX; ltY=t.clientY; }
+  else if(e.touches.length===2 && pinchDist!==null){ const d=touchDist(e.touches[0],e.touches[1]); const scale=pinchDist/d; currentZoom=Math.min(16,Math.max(4.2,pinchZoom*scale)); }
+  e.preventDefault();
+},{passive:false});
+renderer.domElement.addEventListener('touchend',e=>{
+  if(e.touches.length===0){ touchDrag=false; pinchDist=null; }
+  else if(e.touches.length===1){ pinchDist=null; touchDrag=true; ltX=e.touches[0].clientX; ltY=e.touches[0].clientY; }
 });
 
-// ---------- MOUSE FALLBACK ----------
-let dragging = false, lastX = 0, lastY = 0;
-renderer.domElement.addEventListener('mousedown', e => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
-window.addEventListener('mouseup', () => dragging = false);
-window.addEventListener('mousemove', e => {
-  if (!dragging) return;
-  targetRotY += (e.clientX - lastX) * 0.01;
-  targetRotX += (e.clientY - lastY) * 0.01;
-  lastX = e.clientX; lastY = e.clientY;
-});
-renderer.domElement.addEventListener('wheel', e => {
-  currentZoom = Math.min(16, Math.max(4, currentZoom + e.deltaY * 0.01));
-});
+// ---------- HAND TRACKING (MediaPipe) ----------
+const video=document.getElementById('video');
+const overlay=document.getElementById('overlay');
+const octx=overlay.getContext('2d');
+const statusEl=document.getElementById('status');
+const fpsEl=document.getElementById('fps');
+let lastHandX=null,lastHandY=null, smoothPinch=0.14, openPalmStart=null, camOn=false;
+let lastFpsT=performance.now(), frames=0;
 
-// ---------- TOUCH FALLBACK (for touchscreen smart boards) ----------
-let touchDragging = false, lastTouchX = 0, lastTouchY = 0;
-let pinchStartDist = null, pinchStartZoom = currentZoom;
+function resizeOverlay(){
+  const rect=video.getBoundingClientRect();
+  const dpr=window.devicePixelRatio||1;
+  overlay.width=rect.width*dpr; overlay.height=rect.height*dpr;
+  overlay.style.width=rect.width+'px'; overlay.style.height=rect.height+'px';
+  octx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize',resizeOverlay);
 
-function touchDistance(t1, t2) {
-  return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+function isOpenPalm(lm){
+  // fingertips 4,8,12,16,20 far from wrist (0) vs pip joints; simple: distance wrist->tip > 0.5 * hand size proxy
+  // compare tip y vs pip y for fingers (open if tip above pip) for mirrored? use distance from palm center (9)
+  const tips=[4,8,12,16,20], pips=[2,6,10,14,18];
+  let open=0;
+  for(let i=0;i<5;i++){
+    const tip=lm[tips[i]], pip=lm[pips[i]];
+    const distTip=Math.hypot(tip.x - lm[9].x, tip.y - lm[9].y);
+    const distPip=Math.hypot(pip.x - lm[9].x, pip.y - lm[9].y);
+    if(distTip > distPip * 1.35) open++;
+  }
+  return open>=4; // 4-5 fingers extended
 }
 
-renderer.domElement.addEventListener('touchstart', e => {
-  if (e.touches.length === 1) {
-    touchDragging = true;
-    lastTouchX = e.touches[0].clientX;
-    lastTouchY = e.touches[0].clientY;
-  } else if (e.touches.length === 2) {
-    touchDragging = false;
-    pinchStartDist = touchDistance(e.touches[0], e.touches[1]);
-    pinchStartZoom = currentZoom;
-  }
-  e.preventDefault();
-}, { passive: false });
-
-renderer.domElement.addEventListener('touchmove', e => {
-  if (e.touches.length === 1 && touchDragging) {
-    const t = e.touches[0];
-    targetRotY += (t.clientX - lastTouchX) * 0.01;
-    targetRotX += (t.clientY - lastTouchY) * 0.01;
-    lastTouchX = t.clientX; lastTouchY = t.clientY;
-  } else if (e.touches.length === 2 && pinchStartDist !== null) {
-    const dist = touchDistance(e.touches[0], e.touches[1]);
-    const scale = pinchStartDist / dist;
-    currentZoom = Math.min(16, Math.max(4, pinchStartZoom * scale));
-  }
-  e.preventDefault();
-}, { passive: false });
-
-renderer.domElement.addEventListener('touchend', e => {
-  if (e.touches.length === 0) {
-    touchDragging = false;
-    pinchStartDist = null;
-  } else if (e.touches.length === 1) {
-    pinchStartDist = null;
-    touchDragging = true;
-    lastTouchX = e.touches[0].clientX;
-    lastTouchY = e.touches[0].clientY;
-  }
-});
-
-// ---------- HAND TRACKING ----------
-const video = document.getElementById('video');
-const overlay = document.getElementById('overlay');
-const octx = overlay.getContext('2d');
-const statusEl = document.getElementById('status');
-const hintEl = document.getElementById('gestureHint');
-
-let lastHandX = null, lastHandY = null;
-let smoothPinch = 0.15;
-
-function onHandsResults(results) {
-  octx.save();
-  octx.clearRect(0, 0, overlay.width, overlay.height);
-
-  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-    statusEl.classList.add('live');
-    statusEl.innerHTML = '<span class="dot"></span>TRACKING HAND';
-
-    const lm = results.multiHandLandmarks[0];
-
-    // draw simple skeleton dots for feedback
-    octx.fillStyle = '#d4a24e';
-    lm.forEach(p => {
-      octx.beginPath();
-      octx.arc(p.x * overlay.width, p.y * overlay.height, 2.5, 0, Math.PI*2);
-      octx.fill();
-    });
-
-    // palm center ~ landmark 9
-    const palm = lm[9];
-    const handX = palm.x, handY = palm.y;
-    if (lastHandX !== null) {
-      const dx = handX - lastHandX;
-      const dy = handY - lastHandY;
-      targetRotY += dx * 4.5;
-      targetRotX += dy * 4.5;
-    }
-    lastHandX = handX; lastHandY = handY;
-
-    // pinch distance: thumb tip (4) to index tip (8)
-    const thumb = lm[4], index = lm[8];
-    const dist = Math.hypot(thumb.x - index.x, thumb.y - index.y);
-    smoothPinch += (dist - smoothPinch) * 0.2;
-    // map pinch distance (~0.02 closed -> ~0.25 open) to zoom (5 close .. 14 far)
-    const mapped = 5 + Math.min(1, Math.max(0, (smoothPinch - 0.03) / 0.2)) * 9;
-    currentZoom = mapped;
-
+function onHandsResults(results){
+  frames++; const now=performance.now(); if(now-lastFpsT>600){ fpsEl.textContent=Math.round(frames*1000/(now-lastFpsT))+' fps'; frames=0; lastFpsT=now; }
+  const w=overlay.width/(window.devicePixelRatio||1), h=overlay.height/(window.devicePixelRatio||1);
+  octx.clearRect(0,0,w,h);
+  if(results.multiHandLandmarks && results.multiHandLandmarks.length>0){
+    statusEl.classList.add('live'); statusEl.innerHTML='<span class="dot"></span>TRACKING HAND — move & pinch';
+    const lm=results.multiHandLandmarks[0];
+    // draw skeleton
+    octx.fillStyle='#d4a24e'; lm.forEach(p=>{ octx.beginPath(); octx.arc(p.x*w, p.y*h, 2.6,0,Math.PI*2); octx.fill(); });
+    // connections faint
+    octx.strokeStyle='rgba(212,162,78,0.35)'; octx.lineWidth=1;
+    const conn=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+    conn.forEach(([a,b])=>{ octx.beginPath(); octx.moveTo(lm[a].x*w, lm[a].y*h); octx.lineTo(lm[b].x*w, lm[b].y*h); octx.stroke(); });
+    const palm=lm[9]; const handX=palm.x, handY=palm.y;
+    if(lastHandX!==null){ const dx=handX-lastHandX, dy=handY-lastHandY; targetRotY+=dx*4.6; targetRotX+=dy*4.6; }
+    lastHandX=handX; lastHandY=handY;
+    // pinch
+    const thumb=lm[4], index=lm[8];
+    const dist=Math.hypot(thumb.x-index.x, thumb.y-index.y);
+    smoothPinch+=(dist-smoothPinch)*0.22;
+    const mapped=5 + Math.min(1, Math.max(0, (smoothPinch-0.025)/0.21))*9; // 5..14
+    currentZoom+= (mapped - currentZoom)*0.18;
+    // open palm reset
+    if(isOpenPalm(lm)){
+      if(openPalmStart===null) openPalmStart=now;
+      const hold=now-openPalmStart;
+      octx.fillStyle='rgba(212,162,78,0.9)'; octx.font='10px Courier New'; octx.fillText('OPEN PALM '+Math.round(hold)+'ms', 6, 14);
+      if(hold>1200){ resetView(); openPalmStart=null; // brief flash
+        octx.fillStyle='rgba(92,154,111,0.9)'; octx.fillRect(0,h/2-14,w,18); octx.fillStyle='#07130e'; octx.fillText('RESET', w/2-14, h/2-2);
+      }
+    } else openPalmStart=null;
   } else {
-    statusEl.classList.remove('live');
-    statusEl.innerHTML = '<span class="dot"></span>NO HAND DETECTED';
-    lastHandX = null; lastHandY = null;
+    statusEl.classList.remove('live'); statusEl.innerHTML='<span class="dot"></span>NO HAND DETECTED — show hand 40-70cm away';
+    lastHandX=null; lastHandY=null; openPalmStart=null;
   }
-  octx.restore();
 }
 
-async function startCamera() {
-  document.getElementById('startScreen').style.display = 'none';
-  hintEl.style.display = 'block';
-  try {
-    const hands = new Hands({ locateFile: (f) => `https://cdnjs.cloudflare.com/ajax/libs/mediapipe/hands/${f}` });
-    hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
+let hands=null, camUtil=null;
+async function startCamera(){
+  resizeOverlay();
+  if(camOn) return;
+  statusEl.innerHTML='<span class="dot"></span>REQUESTING CAMERA…';
+  try{
+    hands=new Hands({locateFile:(f)=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+    hands.setOptions({maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.62, minTrackingConfidence:0.62});
     hands.onResults(onHandsResults);
-
-    const camUtil = new Camera(video, {
-      onFrame: async () => { await hands.send({ image: video }); },
-      width: 480, height: 360
-    });
+    camUtil=new Camera(video,{onFrame:async()=>{ await hands.send({image:video}); }, width:640, height:480});
     await camUtil.start();
-    statusEl.innerHTML = '<span class="dot"></span>CAMERA READY';
-  } catch (err) {
+    camOn=true;
+    statusEl.classList.add('live'); statusEl.innerHTML='<span class="dot"></span>CAMERA READY — hand tracking active';
+    document.getElementById('startScreen').style.display='none';
+    document.getElementById('camToggle').textContent='Camera Active ✓';
+  }catch(err){
     console.error(err);
-    statusEl.innerHTML = '<span class="dot"></span>CAMERA UNAVAILABLE — use mouse to drag/scroll';
+    statusEl.innerHTML='<span class="dot"></span>CAMERA UNAVAILABLE — use mouse/touch';
+    camOn=false;
   }
+}
+async function stopCamera(){
+  if(camUtil){ try{ camUtil.stop(); }catch{} camUtil=null; }
+  if(video.srcObject){ video.srcObject.getTracks().forEach(t=>t.stop()); video.srcObject=null; }
+  camOn=false; statusEl.classList.remove('live'); statusEl.innerHTML='<span class="dot"></span>CAMERA OFF';
+  document.getElementById('camToggle').textContent='Enable Camera';
 }
 
 document.getElementById('startBtn').addEventListener('click', startCamera);
-document.getElementById('noCam').addEventListener('click', () => {
-  document.getElementById('startScreen').style.display = 'none';
-  hintEl.innerHTML = 'CAMERA SKIPPED<br>DRAG — rotate<br>SCROLL — zoom';
-  hintEl.style.display = 'block';
+document.getElementById('noCamBtn').addEventListener('click', ()=>{
+  document.getElementById('startScreen').style.display='none';
+  statusEl.innerHTML='<span class="dot"></span>CAMERA SKIPPED — mouse/touch active';
+  resizeOverlay();
 });
+document.getElementById('camToggle').addEventListener('click', ()=> camOn? stopCamera(): startCamera());
+
+// handle https requirement note: if not secure context, warn
+if(window.isSecureContext===false){
+  statusEl.innerHTML='<span class="dot"></span>NEEDS HTTPS/LOCALHOST FOR CAMERA — mouse works';
+}
+
+// initial overlay size
+setTimeout(resizeOverlay,300);
 </script>
 </body>
 </html>
