@@ -166,7 +166,7 @@
         <b>MOVE HAND</b> — rotate (higher sensitivity)<br>
         <b>PINCH</b> (thumb + index) — zoom in/out<br>
         <b>DOUBLE PINCH</b> — tap thumb+index twice to next compound<br>
-        <b>OPEN PALM</b> — hold 1.2s to reset view<br>
+        <b>OPEN PALM</b> — no reset (use Reset View button)<br>
         <b>MOUSE</b> — drag rotate, scroll zoom<br>
         <b>TOUCH</b> — 1-finger drag, 2-finger pinch
       </div>
@@ -977,7 +977,7 @@ function setBuilderMode(on){
     if(tabs) tabs.style.display='none';
     renderBuilder();
     const hint=document.getElementById('gestureHint');
-    if(hint) hint.innerHTML='<b>BUILDER MODE</b><br><b>Single pinch</b> = +1 C<br><b>Double pinch</b> = −1 C<br><b>Open palm 1.2s</b> = clear to C₁<br><b>Move</b> = rotate<br><b>Pinch hold</b> = zoom';
+    if(hint) hint.innerHTML='<b>BUILDER MODE</b><br><b>Single pinch</b> = +1 C<br><b>Double pinch</b> = −1 C<br><b>Open palm</b> = no auto clear (use Clear button)<br><b>Move</b> = rotate<br><b>Pinch hold</b> = zoom';
   } else {
     if(grid) grid.style.display='grid';
     if(infoCard) infoCard.style.display='block';
@@ -986,7 +986,7 @@ function setBuilderMode(on){
     if(search) search.style.display='block';
     if(tabs) tabs.style.display='flex';
     const hint=document.getElementById('gestureHint');
-    if(hint) hint.innerHTML='<b>MOVE HAND</b> — rotate (higher sensitivity)<br><b>PINCH</b> (thumb + index) — zoom in/out<br><b>DOUBLE PINCH</b> — tap thumb+index twice to next compound<br><b>OPEN PALM</b> — hold 1.2s to reset view<br><b>MOUSE</b> — drag rotate, scroll zoom<br><b>TOUCH</b> — 1-finger drag, 2-finger pinch';
+    if(hint) hint.innerHTML='<b>MOVE HAND</b> — rotate (higher sensitivity)<br><b>PINCH</b> (thumb + index) — zoom in/out<br><b>DOUBLE PINCH</b> — tap thumb+index twice to next compound<br><b>OPEN PALM</b> — no auto reset<br><b>MOUSE</b> — drag rotate, scroll zoom<br><b>TOUCH</b> — 1-finger drag, 2-finger pinch';
     loadMolecule(currentId);
   }
 }
@@ -1162,27 +1162,11 @@ function onHandsResults(results){
     if(nowTap - doubleTapCooldown > 400){
       currentZoom+= (mapped - currentZoom)*0.18;
     }
-    // open palm reset — fixed: require 2.2s hold + hand nearly still so rotating with open hand won't reset
-    if(isOpenPalm(lm)){
-      if(openPalmStart===null){ openPalmStart=now; openPalmStartPos={x: palm.x, y: palm.y}; }
-      const hold=now-openPalmStart;
-      const moveDist = openPalmStartPos ? Math.hypot(palm.x - openPalmStartPos.x, palm.y - openPalmStartPos.y) : 0;
-      const still = moveDist < 0.045; // ~4.5% of frame; rotating moves more
-      // show progress only if still
-      if(still){
-        octx.fillStyle='rgba(0,0,0,0.72)'; octx.fillRect(4, 6, 96, 12);
-        octx.fillStyle='#ffffff'; octx.font='10px Courier New'; octx.fillText('HOLD '+Math.round(hold)+' /2200', 8, 15);
-        // progress bar
-        octx.fillStyle='rgba(255,255,255,0.92)'; octx.fillRect(8, 18, Math.min(88, (hold/2200)*88), 3);
-      } else {
-        // hand moving -> reset timer (prevents accidental reset while rotating)
-        openPalmStart=now; openPalmStartPos={x: palm.x, y: palm.y};
-        octx.fillStyle='rgba(0,0,0,0.45)'; octx.font='9px Courier New'; octx.fillText('moving — hold still to reset', 6, 14);
-      }
-      if(still && hold>2200){ if(builderMode){ builderCarbons=1; builderBond='single'; const sel=document.getElementById('bondSel'); if(sel) sel.value='single'; renderBuilder(); } else resetView(); openPalmStart=null; openPalmStartPos=null;
-        octx.fillStyle='rgba(0,0,0,0.88)'; octx.fillRect(0,h/2-14,w,18); octx.fillStyle='#ffffff'; octx.font='bold 11px Courier New'; octx.fillText('RESET', w/2-18, h/2-3);
-      }
-    } else { openPalmStart=null; openPalmStartPos=null; }
+    // auto reset disabled — open palm no longer resets (use Reset View button)
+    // keep palm detection visual only, no reset triggered while rotating
+    // if(isOpenPalm(lm)){
+    //   octx.fillStyle='rgba(0,0,0,0.42)'; octx.font='9px Courier New'; octx.fillText('open palm — use Reset button', 6, 14);
+    // }
   } else {
     statusEl.classList.remove('live'); statusEl.innerHTML='<span class="dot"></span>NO HAND DETECTED — show hand 40-70cm away';
     lastHandX=null; lastHandY=null; openPalmStart=null; openPalmStartPos=null; isPinched=false; pinchHoldStart=0;
