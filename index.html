@@ -146,6 +146,7 @@
       <div id="gestureHint">
         <b>MOVE HAND</b> — rotate molecule<br>
         <b>PINCH</b> (thumb + index) — zoom in/out<br>
+        <b>DOUBLE PINCH</b> — tap thumb+index twice to next compound<br>
         <b>OPEN PALM</b> — hold 1.2s to reset view<br>
         <b>MOUSE</b> — drag rotate, scroll zoom<br>
         <b>TOUCH</b> — 1-finger drag, 2-finger pinch
@@ -775,6 +776,27 @@ document.getElementById('classTabs').addEventListener('click',e=>{
 });
 document.getElementById('search').addEventListener('input',e=>{ searchQ=e.target.value; renderGrid(); });
 
+// ---------- DOUBLE PINCH NEXT COMPOUND ----------
+function getFilteredList(){
+  const q=searchQ.trim().toLowerCase();
+  return MOLECULES.filter(m=>{
+    if(filterCls!=='all' && String(m.cls)!==String(filterCls)) return false;
+    if(q && !(m.name.toLowerCase().includes(q) || m.formula.toLowerCase().includes(q) || m.cat.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+function nextCompound(){
+  const list=getFilteredList();
+  const pool=list.length>0?list:MOLECULES;
+  const idx=pool.findIndex(m=>m.id===currentId);
+  const next=pool[(idx+1)%pool.length];
+  if(next){ loadMolecule(next.id); // flash feedback
+    const el=document.getElementById('ovMeta');
+    const prev=el.textContent; el.textContent='▶ DOUBLE PINCH → '+next.name.toUpperCase();
+    setTimeout(()=>{ if(document.getElementById('ovMeta')) document.getElementById('ovMeta').textContent=prev; }, 900);
+  }
+}
+
 // initial
 renderGrid(); loadMolecule('methane');
 
@@ -829,6 +851,7 @@ const octx=overlay.getContext('2d');
 const statusEl=document.getElementById('status');
 const fpsEl=document.getElementById('fps');
 let lastHandX=null,lastHandY=null, smoothPinch=0.14, openPalmStart=null, camOn=false;
+let isPinched=false, lastTapEnd=0, doubleTapCooldown=0;
 let lastFpsT=performance.now(), frames=0;
 
 function resizeOverlay(){
@@ -859,7 +882,7 @@ function onHandsResults(results){
   const w=overlay.width/(window.devicePixelRatio||1), h=overlay.height/(window.devicePixelRatio||1);
   octx.clearRect(0,0,w,h);
   if(results.multiHandLandmarks && results.multiHandLandmarks.length>0){
-    statusEl.classList.add('live'); statusEl.innerHTML='<span class="dot"></span>TRACKING HAND — move & pinch';
+    statusEl.classList.add('live'); statusEl.innerHTML='<span class="dot"></span>TRACKING — move·pinch·double-pinch→next';
     const lm=results.multiHandLandmarks[0];
     // draw skeleton
     octx.fillStyle='#d4a24e'; lm.forEach(p=>{ octx.beginPath(); octx.arc(p.x*w, p.y*h, 2.6,0,Math.PI*2); octx.fill(); });
@@ -873,9 +896,41 @@ function onHandsResults(results){
     // pinch
     const thumb=lm[4], index=lm[8];
     const dist=Math.hypot(thumb.x-index.x, thumb.y-index.y);
+    // --- double pinch detection (thumb+index tap twice) ---
+    const pinchThreshold=0.045, openThreshold=0.08;
+    const nowTap=now;
+    if(!isPinched && dist < pinchThreshold){
+      isPinched=true;
+    } else if(isPinched && dist > openThreshold){
+      isPinched=false;
+      // count as a tap
+      if(nowTap - lastTapEnd < 700 && nowTap - doubleTapCooldown > 900){
+        // double tap detected
+        doubleTapCooldown=nowTap;
+        lastTapEnd=0; // reset
+        nextCompound();
+        octx.fillStyle='rgba(212,162,78,0.95)';
+        octx.fillRect(0, h-22, w, 22);
+        octx.fillStyle='#07130e';
+        octx.font='11px Courier New';
+        octx.fillText('DOUBLE PINCH → NEXT', w/2-66, h-8);
+      } else {
+        lastTapEnd=nowTap;
+        // single tap hint
+        octx.fillStyle='rgba(212,162,78,0.7)';
+        octx.beginPath(); octx.arc(thumb.x*w, thumb.y*h, 10, 0, Math.PI*2); octx.fill();
+      }
+    }
+    // visual pinch state dot
+    if(dist < pinchThreshold){
+      octx.fillStyle='rgba(92,154,111,0.9)'; octx.beginPath(); octx.arc((thumb.x+index.x)/2*w, (thumb.y+index.y)/2*h, 5,0,Math.PI*2); octx.fill();
+    }
     smoothPinch+=(dist-smoothPinch)*0.22;
     const mapped=5 + Math.min(1, Math.max(0, (smoothPinch-0.025)/0.21))*9; // 5..14
-    currentZoom+= (mapped - currentZoom)*0.18;
+    // suppress zoom jump during double tap cooldown (350ms)
+    if(nowTap - doubleTapCooldown > 350){
+      currentZoom+= (mapped - currentZoom)*0.18;
+    }
     // open palm reset
     if(isOpenPalm(lm)){
       if(openPalmStart===null) openPalmStart=now;
