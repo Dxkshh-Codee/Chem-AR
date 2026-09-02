@@ -105,6 +105,14 @@
   .chainDot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px}
   .chainDot.C{background:#3d3d3d;color:#eef2ea;border:1px solid #555}
   .chainBond{color:var(--accent);font-weight:700}
+  #hybridPanel{display:none;flex-direction:column;gap:10px;padding:12px;overflow:auto}
+  #hybridPanel.active{display:flex}
+  .hybTabs{display:flex;gap:6px;flex-wrap:wrap}
+  .hybTab{font-family:Courier New,monospace;font-size:10px;letter-spacing:0.5px;padding:6px 10px;border:1px solid var(--line);background:var(--panel);color:var(--dim);border-radius:999px;cursor:pointer}
+  .hybTab.active{background:var(--accent);color:#0f1c18;border-color:var(--accent);font-weight:700}
+  .hybCard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;cursor:pointer;transition:all .15s}
+  .hybCard:hover{border-color:var(--accent)}
+  .hybCard.active{border-color:var(--accent);background:#2a3f34}
   .handCursor{position:absolute;width:18px;height:18px;border:2px solid #000;background:rgba(0,0,0,0.85);border-radius:50%;pointer-events:none;z-index:6;transform:translate(-50%,-50%);display:none;box-shadow:0 0 0 2px rgba(255,255,255,0.9)}
   .handCursor.active{display:block}
   /* responsive */
@@ -154,6 +162,7 @@
     </div>
     <input id="search" class="search" placeholder="Search molecule or formula… (e.g. benzene)">
     <button id="modeToggle" class="modeToggle">🔧 Builder: OFF</button>
+    <button id="hybridToggle" class="modeToggle" style="background:transparent;border-color:var(--line);color:var(--dim)">🧬 Hybrid: OFF</button>
   </header>
 
   <div id="main">
@@ -204,6 +213,23 @@
         <div class="ic-tags" id="icTags"></div>
       </div>
         <div id="molGrid"></div>
+      </div>
+      <div id="hybridPanel">
+        <div class="builderCard">
+          <h4>🧬 Hybridization Lab — Class 11/12</h4>
+          <div style="font-size:12px;color:var(--dim);line-height:1.5">Complex shapes hard in NCERT: <b style="color:var(--chalk)">sp³d / sp³d² / sp³d³</b>. Tap a card to view 3D + orbital details. Uses same hand gestures (move·pinch·double-pinch).</div>
+          <div class="hybTabs" style="margin-top:10px">
+            <button class="hybTab active" data-hybfilter="all">All</button>
+            <button class="hybTab" data-hybfilter="sp">sp</button>
+            <button class="hybTab" data-hybfilter="sp2">sp²</button>
+            <button class="hybTab" data-hybfilter="sp3">sp³</button>
+            <button class="hybTab" data-hybfilter="sp3d">sp³d</button>
+            <button class="hybTab" data-hybfilter="sp3d2">sp³d²</button>
+            <button class="hybTab" data-hybfilter="sp3d3">sp³d³</button>
+          </div>
+        </div>
+        <div id="hybridGrid" style="display:grid;grid-template-columns:1fr;gap:8px"></div>
+        <div class="builderCard" style="font-family:Courier New,monospace;font-size:10px;color:var(--dim)">Tip: hybridization = mixing orbitals → geometry. Lone pairs distort shape. Try XeF₄ (square planar) vs SF₆ (octahedral).</div>
       </div>
       <div id="builderPanel">
         <div class="builderCard">
@@ -273,10 +299,12 @@ const MATS={
   Be:new THREE.MeshStandardMaterial({color:0x6b8f7a,roughness:0.4}),
   B:new THREE.MeshStandardMaterial({color:0xc97a6a,roughness:0.4}),
   I:new THREE.MeshStandardMaterial({color:0x9b59b6,roughness:0.42}),
+  Br:new THREE.MeshStandardMaterial({color:0xb35a30,roughness:0.42}),
+  Xe:new THREE.MeshStandardMaterial({color:0x5dade2,roughness:0.42}),
   bond:new THREE.MeshStandardMaterial({color:0x7d9186,roughness:0.6})
 };
-const RADII={ C:0.62, H:0.34, O:0.56, N:0.58, Cl:0.74, F:0.52, S:0.78, P:0.82, Na:0.78, Ca:0.92, Be:0.56, B:0.60, I:0.86 };
-const LABEL_COLORS={ C:'#eef2ea', H:'#14201c', O:'#eef2ea', N:'#eef2ea', Cl:'#14201c', F:'#14201c', S:'#14201c', P:'#eef2ea', Na:'#eef2ea', Ca:'#14201c', Be:'#14201c', B:'#14201c', I:'#eef2ea' };
+const RADII={ C:0.62, H:0.34, O:0.56, N:0.58, Cl:0.74, F:0.52, S:0.78, P:0.82, Na:0.78, Ca:0.92, Be:0.56, B:0.60, I:0.86, Br:0.88, Xe:1.02 };
+const LABEL_COLORS={ C:'#eef2ea', H:'#14201c', O:'#eef2ea', N:'#eef2ea', Cl:'#14201c', F:'#14201c', S:'#14201c', P:'#eef2ea', Na:'#eef2ea', Ca:'#14201c', Be:'#14201c', B:'#14201c', I:'#eef2ea', Br:'#eef2ea', Xe:'#14201c' };
 
 function makeLabelSprite(elem){
   const size=128; const c=document.createElement('canvas'); c.width=size; c.height=size;
@@ -690,6 +718,45 @@ B.sucrose=()=>{
 };
 
 
+// ---- Hybridization complex builders (Class 11/12 sp3d, sp3d2, sp3d3) ----
+B.xef2=()=>{
+  const g=new THREE.Group(); const xe=new THREE.Vector3(0,0,0), f1=new THREE.Vector3(-1.85,0,0), f2=new THREE.Vector3(1.85,0,0);
+  g.add(makeAtom('Xe',xe)); g.add(makeAtom('F',f1)); g.add(makeAtom('F',f2)); g.add(makeBond(xe,f1,false)); g.add(makeBond(xe,f2,false)); return g;
+};
+B.xef4=()=>{
+  const g=new THREE.Group(); const xe=new THREE.Vector3(0,0,0);
+  const pts=[new THREE.Vector3(1.75,0,0),new THREE.Vector3(-1.75,0,0),new THREE.Vector3(0,1.75,0),new THREE.Vector3(0,-1.75,0)];
+  g.add(makeAtom('Xe',xe)); pts.forEach(v=>{ g.add(makeAtom('F',v)); g.add(makeBond(xe,v,false)); }); return g;
+};
+B.clf3=()=>{
+  const g=new THREE.Group(); const cl=new THREE.Vector3(0,0,0), f1=new THREE.Vector3(1.75,0,0), f2=new THREE.Vector3(-1.2,1.35,0), f3=new THREE.Vector3(-1.2,-1.35,0);
+  g.add(makeAtom('Cl',cl)); g.add(makeAtom('F',f1)); g.add(makeBond(cl,f1,false)); g.add(makeAtom('F',f2)); g.add(makeBond(cl,f2,false)); g.add(makeAtom('F',f3)); g.add(makeBond(cl,f3,false)); return g;
+};
+B.brf5=()=>{
+  const g=new THREE.Group(); const br=new THREE.Vector3(0,0,0);
+  const pts=[new THREE.Vector3(1.7,0,0),new THREE.Vector3(-1.7,0,0),new THREE.Vector3(0,1.7,0),new THREE.Vector3(0,-1.7,0),new THREE.Vector3(0,0,1.75)];
+  g.add(makeAtom('Br',br)); pts.forEach(v=>{ g.add(makeAtom('F',v)); g.add(makeBond(br,v,false)); }); return g;
+};
+B.if7=()=>{
+  const g=new THREE.Group(); const i=new THREE.Vector3(0,0,0);
+  // 5 equatorial pentagonal
+  for(let k=0;k<5;k++){ const a=k*72*Math.PI/180; const v=new THREE.Vector3(Math.cos(a)*1.85, Math.sin(a)*1.85, 0); g.add(makeAtom('F',v)); g.add(makeBond(i,v,false));}
+  const ax1=new THREE.Vector3(0,0,1.85), ax2=new THREE.Vector3(0,0,-1.85);
+  g.add(makeAtom('F',ax1)); g.add(makeBond(i,ax1,false)); g.add(makeAtom('F',ax2)); g.add(makeBond(i,ax2,false));
+  g.add(makeAtom('I',i)); return g;
+};
+B.xef6=()=>{
+  const g=new THREE.Group(); const xe=new THREE.Vector3(0,0,0);
+  const pts=[new THREE.Vector3(1.75,0,0),new THREE.Vector3(-1.75,0,0),new THREE.Vector3(0,1.75,0),new THREE.Vector3(0,-1.75,0),new THREE.Vector3(0,0,1.75),new THREE.Vector3(0,0,-1.75)];
+  g.add(makeAtom('Xe',xe)); pts.forEach(v=>{ g.add(makeAtom('F',v)); g.add(makeBond(xe,v,false)); });
+  // distort slightly to show lone pair
+  xe.y=0.25; return g;
+};
+B.sf4=()=>{
+  const g=new THREE.Group(); const s=new THREE.Vector3(0,0,0), f1=new THREE.Vector3(1.65,0,0), f2=new THREE.Vector3(-1.2,1.35,0), f3=new THREE.Vector3(-1.2,-1.35,0), f4=new THREE.Vector3(0,0,1.65);
+  g.add(makeAtom('S',s)); [f1,f2,f3,f4].forEach(v=>{ g.add(makeAtom('F',v)); g.add(makeBond(s,v,false)); }); return g;
+};
+
 // ---------- METADATA ----------
 const META={
   hydrogen:{name:'Hydrogen',formula:'H₂',cls:10,cat:'Elements (diatomic)',desc:'Diatomic element, gas at room temp. Class 10: Elements & non-metals.'},
@@ -744,6 +811,15 @@ const META={
   glycine:{name:'Glycine',formula:'C₂H₅NO₂',cls:12,cat:'Biomolecules',desc:'Simplest amino acid, NCERT proteins, zwitterion.'},
   sucrose:{name:'Sucrose',formula:'C₁₂H₂₂O₁₁',cls:12,cat:'Biomolecules',desc:'Cane sugar, α-glucose + β-fructose, NCERT non-reducing disaccharide.'},
 
+  // Hybridization complex (Class 11/12 NCERT hard)
+  xef2:{name:'Xenon Difluoride',formula:'XeF₂',cls:11,cat:'Hybridization sp3d',desc:'sp3d, linear 180°, 3 lone pairs equatorial. NCERT p-block, complex.'},
+  xef4:{name:'Xenon Tetrafluoride',formula:'XeF₄',cls:11,cat:'Hybridization sp3d2',desc:'sp3d2, square planar 90°, 2 lone pairs axial. Hard NCERT shape.'},
+  xef6:{name:'Xenon Hexafluoride',formula:'XeF₆',cls:11,cat:'Hybridization sp3d3',desc:'sp3d3, distorted octahedral. 1 lone pair, hard NCERT.'},
+  clf3:{name:'Chlorine Trifluoride',formula:'ClF₃',cls:11,cat:'Hybridization sp3d',desc:'sp3d, T-shaped 87.5°, 2 lone pairs. NCERT difficult shape.'},
+  brf5:{name:'Bromine Pentafluoride',formula:'BrF₅',cls:11,cat:'Hybridization sp3d2',desc:'sp3d2, square pyramidal. 1 lone pair, 90°. NCERT p-block.'},
+  if7:{name:'Iodine Heptafluoride',formula:'IF₇',cls:11,cat:'Hybridization sp3d3',desc:'sp3d3, pentagonal bipyramidal 72°/90°. Most complex NCERT shape.'},
+  sf4:{name:'Sulphur Tetrafluoride',formula:'SF₄',cls:11,cat:'Hybridization sp3d',desc:'sp3d, see-saw. 1 lone pair equatorial, 102°/173°. NCERT hard.'},
+
   // keep ethane etc also valid for 11 but we have dedicated entries above; allow duplicates via extra keys mapping to same builder
   pcl5_dup:{name:'—',hide:true},
   // class 12
@@ -763,7 +839,7 @@ const ORDERED_IDS=[
   // 11
   'becl2','bf3','ozone','formaldehyde','benzene','pcl5','sf6',
   // 12
-  'methyl_chloride','bromoethane','chlorobenzene','dichloromethane','iodoform','benzyl_chloride','chloroform','carbon_tetra','phenol','cresol','anisole','diethyl_ether','glycerol','acetaldehyde','benzaldehyde','acetone','butanone','acetophenone','benzophenone','formic_acid','benzoic_acid','oxalic_acid','urea','methylamine','ethylamine','aniline','glucose','glycine','sucrose'
+  'methyl_chloride','bromoethane','chlorobenzene','dichloromethane','iodoform','benzyl_chloride','chloroform','carbon_tetra','phenol','cresol','anisole','diethyl_ether','glycerol','acetaldehyde','benzaldehyde','acetone','butanone','acetophenone','benzophenone','formic_acid','benzoic_acid','oxalic_acid','urea','methylamine','ethylamine','aniline','glucose','xef2','xef4','xef6','clf3','brf5','if7','sf4','glycine','sucrose'
 ];
 
 // Build full map including builders that may be aliases
@@ -780,6 +856,8 @@ let builderMode=false;
 let builderCarbons=1;
 let builderBond='single';
 let selectedBuilderIndex=-1;
+let hybridMode=false;
+let hybridFilter='all';
 let builderCarbonMeshes=[];
 let builderRaycaster=new THREE.Raycaster();
 let builderMouse=new THREE.Vector2();
@@ -998,6 +1076,62 @@ function selectFromHand(palm){
   if(idx>=0){ selectedBuilderIndex=idx; renderBuilder(); return true; }
   return false;
 }
+const HYB_INFO={
+  becl2:{hyb:'sp',shape:'Linear',angle:'180°',detail:'Be sp → 2 sigma, 0 lone pairs'},
+  ethyne:{hyb:'sp',shape:'Linear',angle:'180°',detail:'C≡C sp'},
+  xef2:{hyb:'sp3d',shape:'Linear',angle:'180°',detail:'sp3d, 3 lone pairs equatorial'},
+  bf3:{hyb:'sp2',shape:'Trigonal planar',angle:'120°',detail:'B sp2, 0 lone pairs'},
+  ethene:{hyb:'sp2',shape:'Trigonal planar',angle:'120°',detail:'C=C sp2'},
+  benzene:{hyb:'sp2',shape:'Hexagonal planar',angle:'120°',detail:'All C sp2'},
+  methane:{hyb:'sp3',shape:'Tetrahedral',angle:'109.5°',detail:'C sp3, 0 lone pairs'},
+  ammonia:{hyb:'sp3',shape:'Pyramidal',angle:'107°',detail:'N sp3, 1 lone pair'},
+  water:{hyb:'sp3',shape:'Bent',angle:'104.5°',detail:'O sp3, 2 lone pairs'},
+  sf4:{hyb:'sp3d',shape:'See-saw',angle:'102°/173°',detail:'S sp3d, 1 lone pair equatorial'},
+  clf3:{hyb:'sp3d',shape:'T-shaped',angle:'87.5°',detail:'Cl sp3d, 2 lone pairs'},
+  pcl5:{hyb:'sp3d',shape:'Trigonal bipyramidal',angle:'90°/120°',detail:'P sp3d, 0 lone pairs'},
+  sf6:{hyb:'sp3d2',shape:'Octahedral',angle:'90°',detail:'S sp3d2, 0 lone pairs'},
+  brf5:{hyb:'sp3d2',shape:'Square pyramidal',angle:'90°',detail:'Br sp3d2, 1 lone pair'},
+  xef4:{hyb:'sp3d2',shape:'Square planar',angle:'90°',detail:'Xe sp3d2, 2 lone pairs axial'},
+  if7:{hyb:'sp3d3',shape:'Pentagonal bipyramidal',angle:'72°/90°',detail:'I sp3d3, 0 lone pairs, most complex'},
+  xef6:{hyb:'sp3d3',shape:'Distorted octahedral',angle:'~90°',detail:'Xe sp3d3, 1 lone pair'},
+};
+function renderHybridGrid(){
+  const grid=document.getElementById('hybridGrid'); if(!grid) return;
+  grid.innerHTML='';
+  const allIds=ORDERED_IDS.filter(id=>HYB_INFO[id]);
+  const list= hybridFilter==='all' ? allIds : allIds.filter(id=>HYB_INFO[id].hyb===hybridFilter);
+  list.forEach(id=>{
+    const m=META[id]; const h=HYB_INFO[id];
+    const card=document.createElement('div'); card.className='hybCard'+(id===currentId && hybridMode ? ' active':'');
+    card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:700;color:var(--chalk)">'+m.name+'</span><span style="font-family:Courier New,monospace;font-size:10px;padding:3px 7px;border-radius:999px;background:var(--accent);color:#0f1c18">'+h.hyb+'</span></div><div style="font-family:Courier New,monospace;font-size:11px;color:var(--accent2)">'+m.formula+' • '+h.shape+' • '+h.angle+'</div><div style="font-size:11px;color:var(--dim);margin-top:4px">'+m.desc+'</div><div style="font-family:Courier New,monospace;font-size:10px;color:var(--dim);margin-top:4px">'+h.detail+'</div>';
+    card.addEventListener('click',()=>{ currentId=id; if(!hybridMode) setHybridMode(true); loadMolecule(id); renderHybridGrid(); });
+    grid.appendChild(card);
+  });
+  if(list.length===0) grid.innerHTML='<div style="text-align:center;color:var(--dim);font-family:Courier New,monospace;padding:12px">No molecules for '+hybridFilter+'</div>';
+}
+function setHybridMode(on){
+  hybridMode=on;
+  const btn=document.getElementById('hybridToggle')?.addEventListener('click',()=> setHybridMode(!hybridMode));
+  document.querySelectorAll('.hybTab').forEach(b=> b.addEventListener('click',e=>{ document.querySelectorAll('.hybTab').forEach(x=>x.classList.remove('active')); e.target.classList.add('active'); hybridFilter=e.target.dataset.hybfilter; renderHybridGrid(); }));
+  // existing hybridToggle below - prevent duplicate
+  document.getElementById('hybridToggle');
+  const panel=document.getElementById('hybridPanel');
+  const builderPanel=document.getElementById('builderPanel');
+  if(btn) { btn.textContent = on ? '🧬 Hybrid: ON' : '🧬 Hybrid: OFF'; btn.style.background = on ? 'var(--accent)' : 'transparent'; btn.style.color= on ? '#0f1c18':'var(--dim)'; btn.style.borderColor= on ? 'var(--accent)':'var(--line)'; }
+  if(panel) panel.classList.toggle('active', on);
+  if(on){
+    setBuilderMode(false);
+    const grid=document.getElementById('molGrid'); const info=document.getElementById('infoCard'); const count=document.getElementById('countInfo'); const head=document.querySelector('#libraryPanel .rightHead'); const search=document.getElementById('search'); const tabs=document.getElementById('classTabs');
+    if(grid) grid.style.display='none'; if(info) info.style.display='none'; if(count) count.style.display='none'; if(head) head.style.display='none'; if(search) search.style.display='none'; if(tabs) tabs.style.display='none';
+    document.getElementById('libraryPanel').style.display='none';
+    renderHybridGrid();
+    if(!HYB_INFO[currentId]) loadMolecule('sf6');
+  } else {
+    document.getElementById('libraryPanel').style.display='flex';
+    const grid=document.getElementById('molGrid'); const info=document.getElementById('infoCard'); const count=document.getElementById('countInfo'); const head=document.querySelector('#libraryPanel .rightHead'); const search=document.getElementById('search'); const tabs=document.getElementById('classTabs');
+    if(grid) grid.style.display='grid'; if(info) info.style.display='block'; if(count) count.style.display='block'; if(head) head.style.display='flex'; if(search) search.style.display='block'; if(tabs) tabs.style.display='flex';
+  }
+}
 function setBuilderMode(on){
   builderMode=on;
   const btn=document.getElementById('modeToggle');
@@ -1014,6 +1148,7 @@ function setBuilderMode(on){
   if(builderPanel) builderPanel.classList.toggle('active', on);
   if(builderStatus) builderStatus.textContent = on ? 'BUILDER ON' : '';
   if(on){
+    setHybridMode(false);
     selectedBuilderIndex = builderCarbons-1; // default select last
     if(grid) grid.style.display='none';
     if(infoCard) infoCard.style.display='none';
