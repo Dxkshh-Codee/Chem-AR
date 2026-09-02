@@ -31,14 +31,14 @@
   .search{font-family:'Courier New',monospace;font-size:12px;padding:9px 12px;border:1px solid var(--line);background:var(--panel2);color:var(--chalk);border-radius:999px;min-width:200px;outline:none}
   .search:focus{border-color:var(--accent)}
   /* layout */
-  #main{flex:1;display:grid;grid-template-columns:250px 1fr 360px;gap:0;overflow:hidden}
+  #main{flex:1;display:grid;grid-template-columns:300px 1fr 360px;gap:0;overflow:hidden}
   #left{border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;padding:14px;gap:12px;overflow:auto}
   #center{position:relative;background:radial-gradient(1200px 600px at 50% 30%, #1e352a 0%, var(--slate) 65%);overflow:hidden}
   #right{border-left:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;overflow:hidden}
   /* left */
-  .camWrap{position:relative;width:100%;aspect-ratio:4/3;background:#000;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .camWrap{position:relative;width:100%;aspect-ratio:4/3;min-height:210px;background:#000;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,0.35)}
   #video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
-  #overlay{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);pointer-events:none}
+  #overlay{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);pointer-events:none;display:block}
   .cam-label{font-family:'Courier New',monospace;font-size:11px;color:var(--dim);letter-spacing:1px;display:flex;justify-content:space-between;align-items:center}
   #status{font-family:'Courier New',monospace;font-size:11px;color:var(--dim);line-height:1.6}
   #status .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;background:#7a3b3b;vertical-align:middle}
@@ -89,7 +89,7 @@
   .badge{font-family:'Courier New',monospace;font-size:11px;color:var(--dim);border:1px solid var(--line);padding:6px 10px;border-radius:999px;background:rgba(27,46,38,0.6)}
   /* responsive */
   @media (max-width:1100px){
-    #main{grid-template-columns:220px 1fr 300px}
+    #main{grid-template-columns:270px 1fr 300px}
     header{flex-wrap:wrap}
   }
   @media (max-width:800px){
@@ -144,7 +144,7 @@
       </div>
       <div id="status"><span class="dot"></span>CAMERA OFF</div>
       <div id="gestureHint">
-        <b>MOVE HAND</b> — rotate molecule<br>
+        <b>MOVE HAND</b> — rotate (higher sensitivity)<br>
         <b>PINCH</b> (thumb + index) — zoom in/out<br>
         <b>DOUBLE PINCH</b> — tap thumb+index twice to next compound<br>
         <b>OPEN PALM</b> — hold 1.2s to reset view<br>
@@ -885,13 +885,13 @@ function onHandsResults(results){
     statusEl.classList.add('live'); statusEl.innerHTML='<span class="dot"></span>TRACKING — move·pinch·double-pinch→next';
     const lm=results.multiHandLandmarks[0];
     // draw skeleton
-    octx.fillStyle='#d4a24e'; lm.forEach(p=>{ octx.beginPath(); octx.arc(p.x*w, p.y*h, 2.6,0,Math.PI*2); octx.fill(); });
+    octx.fillStyle='#ffd27a'; lm.forEach(p=>{ octx.beginPath(); octx.arc(p.x*w, p.y*h, 4.2,0,Math.PI*2); octx.fill(); octx.strokeStyle='rgba(0,0,0,0.45)'; octx.lineWidth=0.9; octx.stroke(); });
     // connections faint
-    octx.strokeStyle='rgba(212,162,78,0.35)'; octx.lineWidth=1;
+    octx.strokeStyle='rgba(255,210,122,0.55)'; octx.lineWidth=1.6;
     const conn=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
     conn.forEach(([a,b])=>{ octx.beginPath(); octx.moveTo(lm[a].x*w, lm[a].y*h); octx.lineTo(lm[b].x*w, lm[b].y*h); octx.stroke(); });
     const palm=lm[9]; const handX=palm.x, handY=palm.y;
-    if(lastHandX!==null){ const dx=handX-lastHandX, dy=handY-lastHandY; targetRotY+=dx*4.6; targetRotX+=dy*4.6; }
+    if(lastHandX!==null){ const dx=handX-lastHandX, dy=handY-lastHandY; targetRotY+=dx*6.8; targetRotX+=dy*6.8; }
     lastHandX=handX; lastHandY=handY;
     // pinch
     const thumb=lm[4], index=lm[8];
@@ -953,7 +953,7 @@ async function startCamera(){
   statusEl.innerHTML='<span class="dot"></span>REQUESTING CAMERA…';
   try{
     hands=new Hands({locateFile:(f)=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
-    hands.setOptions({maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.62, minTrackingConfidence:0.62});
+    hands.setOptions({maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.55, minTrackingConfidence:0.55});
     hands.onResults(onHandsResults);
     camUtil=new Camera(video,{onFrame:async()=>{ await hands.send({image:video}); }, width:640, height:480});
     await camUtil.start();
