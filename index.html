@@ -165,8 +165,8 @@
       </div>
       <div id="status"><span class="dot"></span>CAMERA OFF</div>
       <div id="gestureHint">
-        <b>MOVE HAND</b> — rotate (higher sensitivity)<br>
-        <b>PINCH</b> (thumb + index) — zoom in/out<br>
+        <b>MOVE HAND</b> — rotate (inverted, higher sensitivity)<br>
+        <b>PINCH</b> (thumb + index) — zoom inverted (close=out, open=in)<br>
         <b>DOUBLE PINCH</b> — tap thumb+index twice to next compound<br>
         <b>OPEN PALM</b> — no reset (use Reset View button)<br>
         <b>MOUSE</b> — drag rotate, scroll zoom<br>
@@ -1023,7 +1023,7 @@ function setBuilderMode(on){
     if(tabs) tabs.style.display='none';
     renderBuilder();
     const hint=document.getElementById('gestureHint');
-    if(hint) hint.innerHTML='<b>BUILDER MODE</b><br><b>Single pinch</b> = +1 C<br><b>Double pinch</b> = −1 C<br><b>Open palm</b> = no auto clear (use Clear button)<br><b>Move</b> = rotate<br><b>Pinch hold</b> = zoom';
+    if(hint) hint.innerHTML='<b>BUILDER MODE</b><br><b>Single pinch</b> = +1 C<br><b>Double pinch</b> = −1 C<br><b>Open palm</b> = no auto clear (use Clear button)<br><b>Move</b> = rotate<br><b>Pinch hold</b> = zoom (inverted)';
   } else {
     if(grid) grid.style.display='grid';
     if(infoCard) infoCard.style.display='block';
@@ -1155,7 +1155,7 @@ function onHandsResults(results){
     const conn=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
     conn.forEach(([a,b])=>{ octx.beginPath(); octx.moveTo(lm[a].x*w, lm[a].y*h); octx.lineTo(lm[b].x*w, lm[b].y*h); octx.stroke(); });
     const palm=lm[9]; const handX=palm.x, handY=palm.y;
-    if(lastHandX!==null){ const dx=handX-lastHandX, dy=handY-lastHandY; targetRotY+=dx*6.8; targetRotX+=dy*6.8; }
+    if(lastHandX!==null){ const dx=handX-lastHandX, dy=handY-lastHandY; targetRotY-=dx*6.8; targetRotX-=dy*6.8; }
     lastHandX=handX; lastHandY=handY;
     // builder hand cursor + hover select
     if(builderMode){
@@ -1230,7 +1230,7 @@ function onHandsResults(results){
       octx.fillStyle='rgba(0,0,0,0.92)'; octx.beginPath(); octx.arc((thumb.x+index.x)/2*w, (thumb.y+index.y)/2*h, 6,0,Math.PI*2); octx.fill(); octx.strokeStyle='rgba(255,255,255,0.9)'; octx.lineWidth=1.1; octx.stroke();
     }
     smoothPinch+=(dist-smoothPinch)*0.22;
-    const mapped=5 + Math.min(1, Math.max(0, (smoothPinch-0.025)/0.21))*9; // 5..14
+    const mapped=14 - Math.min(1, Math.max(0, (smoothPinch-0.025)/0.21))*9; // inverted: pinch close = zoom out, open = zoom in
     // suppress zoom jump during double tap cooldown (400ms) to prevent accidental zoom on tap
     if(nowTap - doubleTapCooldown > 400){
       currentZoom+= (mapped - currentZoom)*0.18;
