@@ -1069,6 +1069,7 @@ const statusEl=document.getElementById('status');
 const fpsEl=document.getElementById('fps');
 let lastHandX=null,lastHandY=null, smoothPinch=0.14, openPalmStart=null, camOn=false;
 let isPinched=false, lastTapEnd=0, doubleTapCooldown=0, pinchHoldStart=0;
+let openPalmStartPos=null;
 let lastFpsT=performance.now(), frames=0;
 
 function resizeOverlay(){
@@ -1161,18 +1162,30 @@ function onHandsResults(results){
     if(nowTap - doubleTapCooldown > 400){
       currentZoom+= (mapped - currentZoom)*0.18;
     }
-    // open palm reset
+    // open palm reset — fixed: require 2.2s hold + hand nearly still so rotating with open hand won't reset
     if(isOpenPalm(lm)){
-      if(openPalmStart===null) openPalmStart=now;
+      if(openPalmStart===null){ openPalmStart=now; openPalmStartPos={x: palm.x, y: palm.y}; }
       const hold=now-openPalmStart;
-      octx.fillStyle='rgba(212,162,78,0.9)'; octx.font='10px Courier New'; octx.fillText('OPEN PALM '+Math.round(hold)+'ms', 6, 14);
-      if(hold>1200){ if(builderMode){ builderCarbons=1; builderBond='single'; const sel=document.getElementById('bondSel'); if(sel) sel.value='single'; renderBuilder(); } else resetView(); openPalmStart=null; // brief flash
-        octx.fillStyle='rgba(92,154,111,0.9)'; octx.fillRect(0,h/2-14,w,18); octx.fillStyle='#07130e'; octx.fillText('RESET', w/2-14, h/2-2);
+      const moveDist = openPalmStartPos ? Math.hypot(palm.x - openPalmStartPos.x, palm.y - openPalmStartPos.y) : 0;
+      const still = moveDist < 0.045; // ~4.5% of frame; rotating moves more
+      // show progress only if still
+      if(still){
+        octx.fillStyle='rgba(0,0,0,0.72)'; octx.fillRect(4, 6, 96, 12);
+        octx.fillStyle='#ffffff'; octx.font='10px Courier New'; octx.fillText('HOLD '+Math.round(hold)+' /2200', 8, 15);
+        // progress bar
+        octx.fillStyle='rgba(255,255,255,0.92)'; octx.fillRect(8, 18, Math.min(88, (hold/2200)*88), 3);
+      } else {
+        // hand moving -> reset timer (prevents accidental reset while rotating)
+        openPalmStart=now; openPalmStartPos={x: palm.x, y: palm.y};
+        octx.fillStyle='rgba(0,0,0,0.45)'; octx.font='9px Courier New'; octx.fillText('moving — hold still to reset', 6, 14);
       }
-    } else openPalmStart=null;
+      if(still && hold>2200){ if(builderMode){ builderCarbons=1; builderBond='single'; const sel=document.getElementById('bondSel'); if(sel) sel.value='single'; renderBuilder(); } else resetView(); openPalmStart=null; openPalmStartPos=null;
+        octx.fillStyle='rgba(0,0,0,0.88)'; octx.fillRect(0,h/2-14,w,18); octx.fillStyle='#ffffff'; octx.font='bold 11px Courier New'; octx.fillText('RESET', w/2-18, h/2-3);
+      }
+    } else { openPalmStart=null; openPalmStartPos=null; }
   } else {
     statusEl.classList.remove('live'); statusEl.innerHTML='<span class="dot"></span>NO HAND DETECTED — show hand 40-70cm away';
-    lastHandX=null; lastHandY=null; openPalmStart=null; isPinched=false; pinchHoldStart=0;
+    lastHandX=null; lastHandY=null; openPalmStart=null; openPalmStartPos=null; isPinched=false; pinchHoldStart=0;
   }
 }
 
