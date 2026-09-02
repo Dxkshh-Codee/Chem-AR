@@ -105,6 +105,8 @@
   .chainDot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px}
   .chainDot.C{background:#3d3d3d;color:#eef2ea;border:1px solid #555}
   .chainBond{color:var(--accent);font-weight:700}
+  .handCursor{position:absolute;width:18px;height:18px;border:2px solid #000;background:rgba(0,0,0,0.85);border-radius:50%;pointer-events:none;z-index:6;transform:translate(-50%,-50%);display:none;box-shadow:0 0 0 2px rgba(255,255,255,0.9)}
+  .handCursor.active{display:block}
   /* responsive */
   @media (max-width:1100px){
     #main{grid-template-columns:270px 1fr 300px}
@@ -182,7 +184,7 @@
         <div class="ov-form" id="ovForm">CH₄ · Tetrahedral</div>
         <div class="ov-meta" id="ovMeta">Class 10 • Carbon compounds</div>
       </div>
-      <div id="viewControls">
+      <div id="handCursor" class="handCursor"></div><div id="viewControls">
         <button class="iconBtn" id="btnReset" title="Reset view">↺</button>
         <button class="iconBtn" id="btnZoomIn" title="Zoom in">+</button>
         <button class="iconBtn" id="btnZoomOut" title="Zoom out">−</button>
@@ -777,6 +779,10 @@ let searchQ='';
 let builderMode=false;
 let builderCarbons=1;
 let builderBond='single';
+let selectedBuilderIndex=-1;
+let builderCarbonMeshes=[];
+let builderRaycaster=new THREE.Raycaster();
+let builderMouse=new THREE.Vector2();
 const grid=document.getElementById('molGrid');
 const countInfo=document.getElementById('countInfo');
 const icTitle=document.getElementById('icTitle');
@@ -831,8 +837,9 @@ document.getElementById('classTabs').addEventListener('click',e=>{
 });
 document.getElementById('search').addEventListener('input',e=>{ searchQ=e.target.value; renderGrid(); });
 document.getElementById('modeToggle')?.addEventListener('click',()=> setBuilderMode(!builderMode));
-document.getElementById('addC')?.addEventListener('click',()=>{ if(builderCarbons<6){builderCarbons++; document.getElementById('bondSel').value=builderBond; renderBuilder();}});
-document.getElementById('removeC')?.addEventListener('click',()=>{ if(builderCarbons>1){builderCarbons--; renderBuilder();}});
+document.getElementById('addC')?.addEventListener('click',()=>{ if(builderCarbons<6){ if(selectedBuilderIndex>=0 && selectedBuilderIndex < builderCarbons-1){ // insert after selected, keep count but highlight new
+ builderCarbons++; selectedBuilderIndex = selectedBuilderIndex+1; } else { builderCarbons++; selectedBuilderIndex = builderCarbons-1; } document.getElementById('bondSel').value=builderBond; renderBuilder();}});
+document.getElementById('removeC')?.addEventListener('click',()=>{ if(builderCarbons>1){ if(selectedBuilderIndex>=0){ builderCarbons--; if(selectedBuilderIndex>=builderCarbons) selectedBuilderIndex=builderCarbons-1; } else { builderCarbons--; } renderBuilder();}});
 document.getElementById('clearC')?.addEventListener('click',()=>{ builderCarbons=1; builderBond='single'; const sel=document.getElementById('bondSel'); if(sel) sel.value='single'; renderBuilder();});
 document.getElementById('builderResetView')?.addEventListener('click',()=> resetView());
 document.getElementById('bondSel')?.addEventListener('change',e=>{ builderBond=e.target.value; if(builderMode) renderBuilder(); });
@@ -872,6 +879,12 @@ function updateBuilderUI(){
     chainHtml+='<span style="margin-left:8px;color:var(--accent)">+ '+hCount+' H</span>';
     elChain.innerHTML=chainHtml;
   }
+  // show selected
+  const selEl=document.getElementById('builderStatus');
+  if(selEl && builderMode){
+    if(selectedBuilderIndex>=0) selEl.textContent='SEL C'+(selectedBuilderIndex+1)+' /C'+builderCarbons;
+    else selEl.textContent='SEL none (click/hand)';
+  }
   if(elLearn){
     if(n===1) elLearn.textContent='Catenation start: 1 carbon has 4 open valencies, all filled by H → methane, tetrahedral.';
     else if(n===2 && bond==='single') elLearn.textContent='2 carbons single-bonded: each C shares 1 bond with neighbor, remaining 3 valencies each → 6 H. Saturated alkane.';
@@ -885,10 +898,15 @@ function buildCarbonChain(){
   const n=builderCarbons, bond=builderBond;
   const spacing=1.55;
   const carbons=[];
+  builderCarbonMeshes=[];
   for(let i=0;i<n;i++){
     const pos=new THREE.Vector3((i-(n-1)/2)*spacing, 0, 0);
     carbons.push(pos);
-    g.add(makeAtom('C', pos));
+    const cMesh=makeAtom('C', pos);
+    // highlight selected
+    if(i===selectedBuilderIndex){ cMesh.material = cMesh.material.clone(); cMesh.material.emissive = new THREE.Color(0xd4a24e); cMesh.material.emissiveIntensity=0.55; }
+    g.add(cMesh);
+    builderCarbonMeshes.push(cMesh);
   }
   // bonds between carbons
   for(let i=0;i<n-1;i++){
@@ -936,6 +954,8 @@ function buildCarbonChain(){
 }
 function renderBuilder(){
   if(!builderMode) return;
+  if(selectedBuilderIndex>=builderCarbons) selectedBuilderIndex=builderCarbons-1;
+  if(builderCarbons===1) selectedBuilderIndex=0;
   while(molGroup.children.length) molGroup.remove(molGroup.children[0]);
   labeledAtoms=[];
   molGroup.add(buildCarbonChain());
@@ -953,6 +973,31 @@ function renderBuilder(){
   if(ovF) ovF.textContent=formula+' • '+builderCarbons+' C • '+builderBond;
   if(ovM) ovM.textContent='Builder Mode — single pinch +C, double pinch -C, open palm clear';
 }
+function selectBuilderCarbon(idx){
+  if(idx<0 || idx>=builderCarbons) return;
+  selectedBuilderIndex=idx;
+  renderBuilder();
+}
+function raycastSelectFromNDC(ndcX, ndcY){
+  if(!builderMode || builderCarbonMeshes.length===0) return -1;
+  builderRaycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
+  const intersects = builderRaycaster.intersectObjects(builderCarbonMeshes, false);
+  if(intersects.length>0){
+    const mesh=intersects[0].object;
+    const idx=builderCarbonMeshes.indexOf(mesh);
+    if(idx>=0) return idx;
+    // mesh may be child group? fallback nearest by distance to projected positions
+  }
+  return -1;
+}
+function selectFromHand(palm){
+  // palm.x 0..1, palm.y 0..1; overlay is mirrored, so invert x for NDC to match visual
+  const ndcX = - (palm.x*2 - 1);
+  const ndcY = - (palm.y*2 - 1);
+  const idx=raycastSelectFromNDC(ndcX, ndcY);
+  if(idx>=0){ selectedBuilderIndex=idx; renderBuilder(); return true; }
+  return false;
+}
 function setBuilderMode(on){
   builderMode=on;
   const btn=document.getElementById('modeToggle');
@@ -969,6 +1014,7 @@ function setBuilderMode(on){
   if(builderPanel) builderPanel.classList.toggle('active', on);
   if(builderStatus) builderStatus.textContent = on ? 'BUILDER ON' : '';
   if(on){
+    selectedBuilderIndex = builderCarbons-1; // default select last
     if(grid) grid.style.display='none';
     if(infoCard) infoCard.style.display='none';
     if(countInfo) countInfo.style.display='none';
@@ -1039,9 +1085,9 @@ document.getElementById('btnZoomIn').addEventListener('click',()=> currentZoom=M
 document.getElementById('btnZoomOut').addEventListener('click',()=> currentZoom=Math.min(16, currentZoom+1.2));
 // mouse
 let dragging=false,lastX=0,lastY=0;
-renderer.domElement.addEventListener('mousedown',e=>{dragging=true; lastX=e.clientX; lastY=e.clientY;});
+renderer.domElement.addEventListener('mousedown',e=>{ if(builderMode){ const rect=renderer.domElement.getBoundingClientRect(); const ndcX=( (e.clientX-rect.left)/rect.width)*2-1; const ndcY=-((e.clientY-rect.top)/rect.height)*2+1; const idx=raycastSelectFromNDC(ndcX, ndcY); if(idx>=0){ selectBuilderCarbon(idx); e.preventDefault(); return; } } dragging=true; lastX=e.clientX; lastY=e.clientY;});
 window.addEventListener('mouseup',()=>dragging=false);
-window.addEventListener('mousemove',e=>{ if(!dragging) return; targetRotY+=(e.clientX-lastX)*0.009; targetRotX+=(e.clientY-lastY)*0.009; lastX=e.clientX; lastY=e.clientY; });
+window.addEventListener('mousemove',e=>{ if(builderMode && !dragging){ const rect=renderer.domElement.getBoundingClientRect(); const ndcX=((e.clientX-rect.left)/rect.width)*2-1; const ndcY=-((e.clientY-rect.top)/rect.height)*2+1; builderRaycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera); const inter=builderRaycaster.intersectObjects(builderCarbonMeshes,false); const cur=document.getElementById('handCursor'); if(cur){ if(inter.length>0){ cur.style.left=e.clientX+'px'; cur.style.top=e.clientY+'px'; cur.classList.add('active'); } else cur.classList.remove('active'); } } if(!dragging) return; targetRotY+=(e.clientX-lastX)*0.009; targetRotX+=(e.clientY-lastY)*0.009; lastX=e.clientX; lastY=e.clientY; });
 renderer.domElement.addEventListener('wheel',e=>{ currentZoom=Math.min(16,Math.max(4.2,currentZoom+e.deltaY*0.008)); e.preventDefault();},{passive:false});
 // touch
 let touchDrag=false, ltX=0, ltY=0, pinchDist=null, pinchZoom=currentZoom;
@@ -1111,6 +1157,26 @@ function onHandsResults(results){
     const palm=lm[9]; const handX=palm.x, handY=palm.y;
     if(lastHandX!==null){ const dx=handX-lastHandX, dy=handY-lastHandY; targetRotY+=dx*6.8; targetRotX+=dy*6.8; }
     lastHandX=handX; lastHandY=handY;
+    // builder hand cursor + hover select
+    if(builderMode){
+      const rect=renderer.domElement.getBoundingClientRect();
+      const ndcX = - (palm.x*2 - 1);
+      const ndcY = - (palm.y*2 - 1);
+      // update hand cursor position (map palm to screen)
+      const cur=document.getElementById('handCursor');
+      if(cur){
+        const sx = (1 - palm.x) * rect.width + rect.left; // mirrored x
+        const sy = palm.y * rect.height + rect.top;
+        cur.style.left=sx+'px'; cur.style.top=sy+'px'; cur.classList.add('active');
+      }
+      // hover highlight: raycast from hand NDC
+      const hoverIdx=raycastSelectFromNDC(ndcX, ndcY);
+      if(hoverIdx>=0 && hoverIdx!==selectedBuilderIndex){
+        // subtle hover: don't auto-select, just show hand cursor; selection on pinch
+      }
+    } else {
+      const cur=document.getElementById('handCursor'); if(cur) cur.classList.remove('active');
+    }
     // pinch
     const thumb=lm[4], index=lm[8];
     const dist=Math.hypot(thumb.x-index.x, thumb.y-index.y);
@@ -1141,7 +1207,14 @@ function onHandsResults(results){
         } else if(nowTap - doubleTapCooldown > 850){
           lastTapEnd=nowTap;
           if(builderMode && nowTap - doubleTapCooldown > 850){
-            if(builderCarbons<6){ builderCarbons++; renderBuilder(); octx.fillStyle='rgba(0,0,0,0.88)'; octx.fillRect(0, h-24, w, 24); octx.fillStyle='#ffffff'; octx.font='bold 12px Courier New'; octx.fillText('BUILDER +1 C → C'+builderCarbons, w/2-68, h-9); doubleTapCooldown=nowTap; }
+            // in builder, single pinch = select carbon under hand or add after selected
+            const didSelect = selectFromHand(lm[9]);
+            if(didSelect){
+              octx.fillStyle='rgba(0,0,0,0.88)'; octx.fillRect(0, h-24, w, 24); octx.fillStyle='#ffffff'; octx.font='bold 12px Courier New'; octx.fillText('SELECT C'+(selectedBuilderIndex+1), w/2-46, h-9); doubleTapCooldown=nowTap; // prevent immediate add
+            } else if(builderCarbons<6){
+              if(selectedBuilderIndex>=0 && selectedBuilderIndex < builderCarbons-1){ builderCarbons++; selectedBuilderIndex++; } else { builderCarbons++; selectedBuilderIndex=builderCarbons-1; }
+              renderBuilder(); octx.fillStyle='rgba(0,0,0,0.88)'; octx.fillRect(0, h-24, w, 24); octx.fillStyle='#ffffff'; octx.font='bold 12px Courier New'; octx.fillText('BUILDER +1 C → C'+builderCarbons, w/2-68, h-9); doubleTapCooldown=nowTap;
+            }
           }
           // single tap feedback - small black ring
           octx.strokeStyle='rgba(0,0,0,0.9)'; octx.lineWidth=1.4; octx.beginPath(); octx.arc(thumb.x*w, thumb.y*h, 13, 0, Math.PI*2); octx.stroke();
