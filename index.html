@@ -6,14 +6,16 @@
 <title>Gesture Molecule Lab — Class 10/11/12 | Smart Board AR</title>
 <style>
   :root{
-    --slate:#0f1c18;
-    --panel:#1b2e26;
-    --panel2:#13231d;
-    --chalk:#eef2ea;
-    --dim:#9ab0a3;
-    --line:#2b3f36;
-    --accent:#d4a24e;
-    --accent2:#e8c07a;
+    --slate:#0e2b1f; /* school green slate */
+    --panel:#174031;
+    --panel2:#123626;
+    --chalk:#fffef2;
+    --dim:#b8d0c0;
+    --line:#2f5a42;
+    --accent:#f7c873; /* chalk yellow */
+    --accent2:#ffe8a3;
+    --wood:#8d6e4a;
+    --wood2:#a08052;
     --radius:14px;
   }
   *{box-sizing:border-box}
@@ -121,6 +123,30 @@
   .hybCard.active{border-color:var(--accent);background:#2a3f34}
   .handCursor{position:absolute;width:18px;height:18px;border:2px solid #000;background:rgba(0,0,0,0.85);border-radius:50%;pointer-events:none;z-index:6;transform:translate(-50%,-50%);display:none;box-shadow:0 0 0 2px rgba(255,255,255,0.9)}
   .handCursor.active{display:block}
+  /* school theme extras */
+  header{ background: linear-gradient(180deg, rgba(18,54,38,0.98) 0%, rgba(14,43,31,0.98) 100%); border-bottom:3px solid var(--wood); box-shadow:0 4px 0 rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)}
+  .brand .title{font-size:22px; letter-spacing:0.4px; text-shadow:0 1px 0 rgba(0,0,0,0.45)}
+  .brand .sub{color:#d8e8d5; font-weight:600}
+  #main{ background: #0c2418}
+  #left, #right{background: #0f2e1f; border-color:#2f5a42}
+  #center{background: radial-gradient(1100px 600px at 50% 30%, #1e4f36 0%, #0e2b1f 68%); border-left:1px solid #2f5a42; border-right:1px solid #2f5a42}
+  .camWrap{ border:2px solid var(--wood); box-shadow: 0 6px 18px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.06)}
+  .cam-label{ color:var(--accent2); font-weight:700}
+  .btn{ box-shadow:0 3px 0 rgba(0,0,0,0.28); letter-spacing:0.2px}
+  .btn:active{ transform:translateY(1px); box-shadow:0 1px 0 rgba(0,0,0,0.25)}
+  .builderCard, .infoCard{ border:2px solid #2f5a42; box-shadow:0 4px 12px rgba(0,0,0,0.18)}
+  .molBtn{ border:2px solid #2f5a42}
+  .molBtn.active{ background:#244a36; border-color:var(--accent); box-shadow:0 3px 0 rgba(0,0,0,0.2)}
+  .tab{ border:2px solid #2f5a42; background:#143824; font-weight:700}
+  .tab.active{ background:var(--accent); color:#143824; border-color:var(--accent); box-shadow:0 2px 0 rgba(0,0,0,0.2)}
+  .tag{ border:1px solid #3a6b52; background:#143824}
+  #molInfoOverlay{ background:rgba(16,46,32,0.92); border:2px solid var(--wood); box-shadow:0 6px 18px rgba(0,0,0,0.3)}
+  .handCursor{ border-width:3px}
+  /* teacher bar */
+  #teacherBar{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:8px 12px; background: linear-gradient(90deg, #1a3f2e 0%, #143824 100%); border-top:1px solid #2f5a42; border-bottom:2px solid var(--wood)}
+  .tbtn{ font-family:Courier New,monospace; font-size:11px; padding:7px 10px; border-radius:999px; border:1px solid #3a6b52; background:#1e4a33; color:var(--chalk); cursor:pointer}
+  .tbtn.primary{ background:var(--accent); color:#143824; border-color:var(--accent); font-weight:700}
+  .tbtn:hover{ border-color:var(--accent)}
   /* responsive */
   @media (max-width:1100px){
     #main{grid-template-columns:270px 1fr 300px}
@@ -171,6 +197,15 @@
     <button id="hybridToggle" class="modeToggle" style="background:transparent;border-color:var(--line);color:var(--dim)">🧬 Hybrid: OFF</button>
   </header>
 
+  <div id="teacherBar">
+    <span style="font-family:Georgia,serif;font-size:13px;color:var(--accent2);font-weight:700">👩‍🏫 Teacher Mode</span>
+    <span style="font-family:Courier New,monospace;font-size:11px;color:var(--dim)">Class 10→12 • NCERT 112 molecules • Hand gestures • Builder • Hybridization</span>
+    <span style="flex:1"></span>
+    <button class="tbtn primary" id="tStartLesson">▶ Start Lesson</button>
+    <button class="tbtn" id="tGuide">📖 How to Use</button>
+    <button class="tbtn" id="tBoard">🧹 Clear Board</button>
+    <button class="tbtn" id="tQuiz">❓ Quiz</button>
+  </div>
   <div id="main">
     <aside id="left">
       <div class="cam-label"><span>HAND TRACKING</span><span id="fps" style="opacity:.6">— fps</span></div>
@@ -304,6 +339,24 @@
   </div>
 </div>
 
+<div id="guideModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.62);z-index:50;align-items:center;justify-content:center;padding:16px">
+    <div style="max-width:720px;width:100%;background:#f7f5e8;color:#1a2e1f;border:3px solid var(--wood);border-radius:16px;overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,0.45)">
+      <div style="background:linear-gradient(90deg, #174031 0%, #0e2b1f 100%);color:var(--chalk);padding:14px 16px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-family:Georgia,serif;font-size:16px;color:var(--accent2)">📖 Teacher Guide — Gesture Molecule Lab</span>
+        <button id="guideClose" style="background:var(--accent);border:none;border-radius:999px;padding:6px 12px;cursor:pointer;font-weight:700;color:#0e2b1f">✕ Close</button>
+      </div>
+      <div style="padding:14px 16px;max-height:62vh;overflow:auto;font-family:system-ui,Segoe UI,Roboto,sans-serif;font-size:13px;line-height:1.6">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:#fff;border:1px solid #d8d0b4;border-radius:10px;padding:10px"><b>1. Enable Camera</b><br>Click <b>Enable Camera & Begin</b>. Allow permission. Hand 40-70cm, good light, plain background. If fails, use mouse.</div>
+          <div style="background:#fff;border:1px solid #d8d0b4;border-radius:10px;padding:10px"><b>2. Move & Pinch</b><br>Open hand move → rotate. Thumb+index pinch → zoom (inverted). Double pinch → next molecule.</div>
+          <div style="background:#fff;border:1px solid #d8d0b4;border-radius:10px;padding:10px"><b>3. Builder (Class 10)</b><br>Click <b>🔧 Builder</b> → choose Carbon count, Bond position, Functional group. <b>Click a C</b> to select (black dot), single pinch = +1 C / add group, double pinch = −1 C.</div>
+          <div style="background:#fff;border:1px solid #d8d0b4;border-radius:10px;padding:10px"><b>4. Hybrid Lab (Class 11)</b><br>Click <b>🧬 Hybrid</b> → filter <b>sp³d/sp³d²/sp³d³</b> → tap card like <b>XeF₄</b> square planar, <b>IF₇</b> pentagonal bipyramidal.</div>
+        </div>
+        <div style="margin-top:10px;background:#fff8d6;border:1px solid #e6d88a;border-radius:10px;padding:10px"><b>School Theme:</b> Green chalkboard + wood frame, high-contrast chalk text, big buttons for smart-board touch. Use <b>Clear Board</b> to reset, <b>Quiz</b> for quick oral questions (e.g., What is hybridization of SF₆?).</div>
+        <div style="margin-top:8px;font-size:11px;color:#5a4a2a">Hindi: हाथ से घुमाएँ, पिंच से ज़ूम, डबल पिंच से अगला अणु। Builder में कार्बन जोड़ें/हटाएँ।</div>
+      </div>
+    </div>
+  </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
@@ -1856,6 +1909,28 @@ function renderHybridGrid(){
 function setHybridMode(on){
   hybridMode=on;
   const btn=document.getElementById('hybridToggle')?.addEventListener('click',()=> setHybridMode(!hybridMode));
+  // Teacher bar
+  document.getElementById('tGuide')?.addEventListener('click',()=>{ const m=document.getElementById('guideModal'); if(m) m.style.display='flex'; });
+  document.getElementById('guideClose')?.addEventListener('click',()=>{ const m=document.getElementById('guideModal'); if(m) m.style.display='none'; });
+  document.getElementById('guideModal')?.addEventListener('click',e=>{ if(e.target.id==='guideModal') e.currentTarget.style.display='none'; });
+  document.getElementById('tBoard')?.addEventListener('click',()=>{ if(builderMode){ builderCarbons=1; builderBonds={}; builderFuncGroups={}; selectedBuilderIndex=0; selectedBondIndex=0; renderBuilder(); renderIsomers(); } else resetView(); const el=document.getElementById('builderWarn'); if(el){ el.textContent='🧹 Board cleared'; el.style.display='block'; setTimeout(()=> el.style.display='none', 1400); } });
+  document.getElementById('tQuiz')?.addEventListener('click',()=>{
+    const qs=[
+      'Q: Hybridization of SF₆? Ans: sp³d² octahedral',
+      'Q: Shape of XeF₄? Ans: Square planar (sp³d², 2 lone pairs)',
+      'Q: CH₄ hybridization? Ans: sp³ tetrahedral 109.5°',
+      'Q: C₂H₄ hybridization? Ans: sp² trigonal planar',
+      'Q: Isobutane isomer of? Ans: n-Butane C₄H₁₀'
+    ];
+    alert('Quick Quiz (oral):\n\n'+qs[Math.floor(Math.random()*qs.length)]+'\n\nTip: Use Builder/Hybrid to show answer in 3D');
+  });
+  document.getElementById('tStartLesson')?.addEventListener('click',()=>{
+    // simple lesson flow: start with methane in Builder for Class 10
+    setHybridMode(false); setBuilderMode(true);
+    builderCarbons=1; builderBonds={}; builderFuncGroups={}; selectedBuilderIndex=0; renderBuilder(); renderIsomers();
+    const m=document.getElementById('guideModal'); if(m) m.style.display='none';
+    const el=document.getElementById('builderWarn'); if(el){ el.textContent='▶ Lesson started: Builder C1 Methane → add C, try double bond at C1—C2, add OH'; el.style.display='block'; setTimeout(()=> el.style.display='none', 3200); }
+  });
   document.querySelectorAll('.hybTab').forEach(b=> b.addEventListener('click',e=>{ document.querySelectorAll('.hybTab').forEach(x=>x.classList.remove('active')); e.target.classList.add('active'); hybridFilter=e.target.dataset.hybfilter; renderHybridGrid(); }));
   // existing hybridToggle below - prevent duplicate
   document.getElementById('hybridToggle');
