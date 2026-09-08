@@ -1545,7 +1545,7 @@ function updateBuilderUI(){
 function buildCarbonChain(){
   const g=new THREE.Group();
   const n=builderCarbons, bond=builderBond;
-  const spacing=1.55;
+  const spacing=1.85;
   const carbons=[];
   builderCarbonMeshes=[];
   // clamp bond position
@@ -1604,33 +1604,39 @@ function buildCarbonChain(){
     const fg = builderFuncGroups[i];
     if(fg){
       if(fg==='OH'){
-        const oPos=base.clone().add(new THREE.Vector3(0,1.35,0));
-        const ho=new THREE.Vector3(oPos.x+0.55, oPos.y+0.35,0);
+        const dir=(i%2===0?1:-1);
+        const oPos=base.clone().add(new THREE.Vector3(0.25*dir,0,1.45));
+        const ho=oPos.clone().add(new THREE.Vector3(0.55,0.35*dir,0));
         g.add(makeAtom('O', oPos)); g.add(makeBond(base, oPos, false));
         g.add(makeAtom('H', ho)); g.add(makeBond(oPos, ho, true));
       } else if(fg==='Cl'){
-        const clPos=base.clone().add(new THREE.Vector3(0,1.45,0));
+        const dir=(i%2===0?1:-1);
+        const clPos=base.clone().add(new THREE.Vector3(0.2*dir,0,1.55));
         g.add(makeAtom('Cl', clPos)); g.add(makeBond(base, clPos, false));
       } else if(fg==='Br'){
-        const brPos=base.clone().add(new THREE.Vector3(0,1.55,0));
+        const dir=(i%2===0?1:-1);
+        const brPos=base.clone().add(new THREE.Vector3(0.2*dir,0,1.65));
         g.add(makeAtom('Br', brPos)); g.add(makeBond(base, brPos, false));
       } else if(fg==='NH2'){
-        const nPos=base.clone().add(new THREE.Vector3(0,1.35,0));
+        const dir=(i%2===0?1:-1);
+        const nPos=base.clone().add(new THREE.Vector3(0.25*dir,0,1.45));
         g.add(makeAtom('N', nPos)); g.add(makeBond(base, nPos, false));
-        const h1=nPos.clone().add(new THREE.Vector3(0.55,0.6,0)), h2=nPos.clone().add(new THREE.Vector3(-0.55,0.6,0));
+        const h1=nPos.clone().add(new THREE.Vector3(0.55*dir,0.6,0.25)), h2=nPos.clone().add(new THREE.Vector3(-0.55*dir,0.6,0.25));
         g.add(makeAtom('H',h1)); g.add(makeBond(nPos,h1,true)); g.add(makeAtom('H',h2)); g.add(makeBond(nPos,h2,true));
       } else if(fg==='CHO'){
-        const cA=base.clone().add(new THREE.Vector3(0,1.45,0));
-        const oA=cA.clone().add(new THREE.Vector3(0.65,0.55,0));
-        const hA=cA.clone().add(new THREE.Vector3(-0.45,-0.65,0));
+        const dir=(i%2===0?1:-1);
+        const cA=base.clone().add(new THREE.Vector3(0.25*dir,0,1.55));
+        const oA=cA.clone().add(new THREE.Vector3(0.65*dir,0.55,0));
+        const hA=cA.clone().add(new THREE.Vector3(-0.45*dir,-0.65,0));
         g.add(makeAtom('C', cA)); g.add(makeBond(base, cA, false));
         g.add(makeAtom('O', oA)); g.add(makeBond(cA, oA, false));
         g.add(makeAtom('H', hA)); g.add(makeBond(cA, hA, true));
       } else if(fg==='COOH'){
-        const cA=base.clone().add(new THREE.Vector3(0,1.45,0));
-        const oD=cA.clone().add(new THREE.Vector3(0.65,0.65,0));
-        const oH=cA.clone().add(new THREE.Vector3(-0.65,0.65,0));
-        const ho=oH.clone().add(new THREE.Vector3(-0.55,0.55,0));
+        const dir=(i%2===0?1:-1);
+        const cA=base.clone().add(new THREE.Vector3(0.25*dir,0,1.55));
+        const oD=cA.clone().add(new THREE.Vector3(0.65*dir,0.65,0));
+        const oH=cA.clone().add(new THREE.Vector3(-0.65*dir,0.65,0));
+        const ho=oH.clone().add(new THREE.Vector3(-0.55*dir,0.55,0));
         g.add(makeAtom('C', cA)); g.add(makeBond(base, cA, false));
         g.add(makeAtom('O', oD)); g.add(makeBond(cA, oD, false));
         g.add(makeAtom('O', oH)); g.add(makeBond(cA, oH, false));
