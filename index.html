@@ -277,6 +277,8 @@
               <option value="Cl">—Cl (chloro)</option>
               <option value="Br">—Br (bromo)</option>
               <option value="NH2">—NH₂ (amine)</option>
+              <option value="CH3">—CH₃ (methyl branch)</option>
+              <option value="C2H5">—CH₂CH₃ (ethyl branch)</option>
               <option value="CHO">—CHO (aldehyde)</option>
               <option value="COOH">—COOH (carboxylic acid)</option>
             </select>
@@ -1600,47 +1602,79 @@ function buildCarbonChain(){
       g.add(makeAtom('H', hPos));
       g.add(makeBond(base, hPos, true));
     });
-    // functional group on this carbon
+    // functional group on this carbon — alternate X/Y axis, plus alkyl branches CH3 / C2H5
     const fg = builderFuncGroups[i];
     if(fg){
+      const useX = (i%2===0); // alternate: even -> X plane, odd -> Y plane
+      const axis = useX ? new THREE.Vector3(1,0,0) : new THREE.Vector3(0,1,0);
+      const perp = useX ? new THREE.Vector3(0,0,1) : new THREE.Vector3(0,0,1);
+      // base offset distance
       if(fg==='OH'){
-        const dir=(i%2===0?1:-1);
-        const oPos=base.clone().add(new THREE.Vector3(0.25*dir,0,1.45));
-        const ho=oPos.clone().add(new THREE.Vector3(0.55,0.35*dir,0));
+        const oPos=base.clone().add(axis.clone().multiplyScalar(1.45).add(perp.clone().multiplyScalar(0.15)));
+        const ho=oPos.clone().add(new THREE.Vector3(0.55,0.35,0.15));
         g.add(makeAtom('O', oPos)); g.add(makeBond(base, oPos, false));
         g.add(makeAtom('H', ho)); g.add(makeBond(oPos, ho, true));
       } else if(fg==='Cl'){
-        const dir=(i%2===0?1:-1);
-        const clPos=base.clone().add(new THREE.Vector3(0.2*dir,0,1.55));
+        const clPos=base.clone().add(axis.clone().multiplyScalar(1.55).add(perp.clone().multiplyScalar(0.1)));
         g.add(makeAtom('Cl', clPos)); g.add(makeBond(base, clPos, false));
       } else if(fg==='Br'){
-        const dir=(i%2===0?1:-1);
-        const brPos=base.clone().add(new THREE.Vector3(0.2*dir,0,1.65));
+        const brPos=base.clone().add(axis.clone().multiplyScalar(1.65).add(perp.clone().multiplyScalar(0.1)));
         g.add(makeAtom('Br', brPos)); g.add(makeBond(base, brPos, false));
       } else if(fg==='NH2'){
-        const dir=(i%2===0?1:-1);
-        const nPos=base.clone().add(new THREE.Vector3(0.25*dir,0,1.45));
+        const nPos=base.clone().add(axis.clone().multiplyScalar(1.45).add(perp.clone().multiplyScalar(0.12)));
         g.add(makeAtom('N', nPos)); g.add(makeBond(base, nPos, false));
-        const h1=nPos.clone().add(new THREE.Vector3(0.55*dir,0.6,0.25)), h2=nPos.clone().add(new THREE.Vector3(-0.55*dir,0.6,0.25));
+        const h1=nPos.clone().add(new THREE.Vector3(0.55,0.6,0.25)), h2=nPos.clone().add(new THREE.Vector3(-0.55,0.6,0.25));
+        // adjust h1/h2 to axis plane
+        if(useX){ h1.set(nPos.x+0.55, nPos.y+0.25, nPos.z+0.6); h2.set(nPos.x-0.55, nPos.y+0.25, nPos.z+0.6); }
         g.add(makeAtom('H',h1)); g.add(makeBond(nPos,h1,true)); g.add(makeAtom('H',h2)); g.add(makeBond(nPos,h2,true));
       } else if(fg==='CHO'){
-        const dir=(i%2===0?1:-1);
-        const cA=base.clone().add(new THREE.Vector3(0.25*dir,0,1.55));
-        const oA=cA.clone().add(new THREE.Vector3(0.65*dir,0.55,0));
-        const hA=cA.clone().add(new THREE.Vector3(-0.45*dir,-0.65,0));
+        const cA=base.clone().add(axis.clone().multiplyScalar(1.55));
+        const oA=cA.clone().add(axis.clone().multiplyScalar(0.65).add(new THREE.Vector3(0,0.55,0)));
+        const hA=cA.clone().add(axis.clone().multiplyScalar(-0.45).add(new THREE.Vector3(0,-0.65,0)));
         g.add(makeAtom('C', cA)); g.add(makeBond(base, cA, false));
         g.add(makeAtom('O', oA)); g.add(makeBond(cA, oA, false));
         g.add(makeAtom('H', hA)); g.add(makeBond(cA, hA, true));
       } else if(fg==='COOH'){
-        const dir=(i%2===0?1:-1);
-        const cA=base.clone().add(new THREE.Vector3(0.25*dir,0,1.55));
-        const oD=cA.clone().add(new THREE.Vector3(0.65*dir,0.65,0));
-        const oH=cA.clone().add(new THREE.Vector3(-0.65*dir,0.65,0));
-        const ho=oH.clone().add(new THREE.Vector3(-0.55*dir,0.55,0));
+        const cA=base.clone().add(axis.clone().multiplyScalar(1.55));
+        const oD=cA.clone().add(axis.clone().multiplyScalar(0.65).add(new THREE.Vector3(0,0.65,0)));
+        const oH=cA.clone().add(axis.clone().multiplyScalar(-0.65).add(new THREE.Vector3(0,0.65,0)));
+        const ho=oH.clone().add(axis.clone().multiplyScalar(-0.55).add(new THREE.Vector3(0,0.55,0)));
         g.add(makeAtom('C', cA)); g.add(makeBond(base, cA, false));
         g.add(makeAtom('O', oD)); g.add(makeBond(cA, oD, false));
         g.add(makeAtom('O', oH)); g.add(makeBond(cA, oH, false));
         g.add(makeAtom('H', ho)); g.add(makeBond(oH, ho, true));
+      } else if(fg==='CH3'){
+        const cB=base.clone().add(axis.clone().multiplyScalar(1.55).add(perp.clone().multiplyScalar(0.1)));
+        g.add(makeAtom('C', cB)); g.add(makeBond(base, cB, false));
+        const hs=[cB.clone().add(new THREE.Vector3(0.65,0.65,0.4)), cB.clone().add(new THREE.Vector3(0.65,0.65,-0.4)), cB.clone().add(new THREE.Vector3(-0.45,0.65,0.4))];
+        // adjust for axis
+        let hPos=[];
+        if(useX) hPos=[cB.clone().add(new THREE.Vector3(0.6,0.6,0.4)), cB.clone().add(new THREE.Vector3(0.6,-0.6,0.4)), cB.clone().add(new THREE.Vector3(0.6,0, -0.7))];
+        else hPos=[cB.clone().add(new THREE.Vector3(0.6,0.6,0.4)), cB.clone().add(new THREE.Vector3(-0.6,0.6,0.4)), cB.clone().add(new THREE.Vector3(0,0.6,-0.7))];
+        hPos=[cB.clone().add(axis.clone().multiplyScalar(0.6).add(new THREE.Vector3(0,0.6,0.4))), cB.clone().add(axis.clone().multiplyScalar(0.6).add(new THREE.Vector3(0,-0.6,0.4))), cB.clone().add(axis.clone().multiplyScalar(-0.45).add(new THREE.Vector3(0,0.6,-0.4)))];
+        // simplified: just add 3 H around cB
+        const h1=cB.clone().add(new THREE.Vector3(0.65,0.65,0.4)), h2=cB.clone().add(new THREE.Vector3(0.65,-0.65,0.4)), h3=cB.clone().add(new THREE.Vector3(-0.45,0.65,-0.7));
+        // use axis-aware
+        let ha,b,c;
+        if(useX){ ha=cB.clone().add(new THREE.Vector3(0.85,0.6,0.35)); b=cB.clone().add(new THREE.Vector3(0.85,-0.6,0.35)); c=cB.clone().add(new THREE.Vector3(-0.65,0, -0.7)); }
+        else { ha=cB.clone().add(new THREE.Vector3(0.6,0.85,0.35)); b=cB.clone().add(new THREE.Vector3(-0.6,0.85,0.35)); c=cB.clone().add(new THREE.Vector3(0,-0.65,-0.7)); }
+        g.add(makeAtom('H',ha)); g.add(makeBond(cB,ha,true)); g.add(makeAtom('H',b)); g.add(makeBond(cB,b,true)); g.add(makeAtom('H',c)); g.add(makeBond(cB,c,true));
+      } else if(fg==='C2H5'){
+        const cB1=base.clone().add(axis.clone().multiplyScalar(1.55).add(perp.clone().multiplyScalar(0.1)));
+        const cB2=cB1.clone().add(axis.clone().multiplyScalar(1.45));
+        g.add(makeAtom('C', cB1)); g.add(makeBond(base, cB1, false));
+        g.add(makeAtom('C', cB2)); g.add(makeBond(cB1, cB2, false));
+        // H on cB1 (2 H because one bond to base, one to cB2)
+        const hB1a=cB1.clone().add(new THREE.Vector3(0.6,0.6,0.4)), hB1b=cB1.clone().add(new THREE.Vector3(0.6,-0.6,0.4));
+        let ha1, hb1;
+        if(useX){ ha1=cB1.clone().add(new THREE.Vector3(0,0.85,0.45)); hb1=cB1.clone().add(new THREE.Vector3(0,-0.85,0.45)); }
+        else { ha1=cB1.clone().add(new THREE.Vector3(0.85,0.45,0)); hb1=cB1.clone().add(new THREE.Vector3(-0.85,0.45,0)); }
+        g.add(makeAtom('H',ha1)); g.add(makeBond(cB1,ha1,true)); g.add(makeAtom('H',hb1)); g.add(makeBond(cB1,hb1,true));
+        // 3 H on cB2
+        let hc1,hc2,hc3;
+        if(useX){ hc1=cB2.clone().add(new THREE.Vector3(0.85,0.6,0.35)); hc2=cB2.clone().add(new THREE.Vector3(0.85,-0.6,0.35)); hc3=cB2.clone().add(new THREE.Vector3(-0.65,0,-0.7)); }
+        else { hc1=cB2.clone().add(new THREE.Vector3(0.6,0.85,0.35)); hc2=cB2.clone().add(new THREE.Vector3(-0.6,0.85,0.35)); hc3=cB2.clone().add(new THREE.Vector3(0,-0.65,-0.7)); }
+        g.add(makeAtom('H',hc1)); g.add(makeBond(cB2,hc1,true)); g.add(makeAtom('H',hc2)); g.add(makeBond(cB2,hc2,true)); g.add(makeAtom('H',hc3)); g.add(makeBond(cB2,hc3,true));
       }
     }
   }
