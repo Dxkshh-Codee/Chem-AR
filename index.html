@@ -255,7 +255,8 @@
           <select id="bondPosSel" class="bondSel">
             <option value="0">Bond 1 — C1—C2</option>
           </select>
-          <div style="font-family:Courier New,monospace;font-size:10px;color:var(--dim);margin-top:4px">Alkene/alkyne now works for any length: select which C–C bond is double/triple.</div>
+          <div style="font-family:Courier New,monospace;font-size:10px;color:var(--dim);margin-top:4px">Alkene/alkyne now works for any length: select bond + type. Multiple double/triple allowed.</div>
+          <div id="multiBondInfo" style="font-family:Courier New,monospace;font-size:10px;color:var(--accent);margin-top:4px">All single</div>
           <div class="builderRow">
             <button id="addC" class="builderBtn primary">+ Add C</button>
             <button id="removeC" class="builderBtn">− Remove C</button>
@@ -1317,6 +1318,7 @@ let builderCarbons=1;
 let builderBond='single';
 let selectedBuilderIndex=0;
 let selectedBondIndex=0;
+let builderBonds={}; // bondIndex -> 'single'|'double'|'triple' for multiple bonds
 let builderFuncGroups={}; // idx -> 'OH'|'Cl'|... 
 let hybridMode=false;
 let hybridFilter='all';
@@ -1377,13 +1379,14 @@ document.getElementById('classTabs').addEventListener('click',e=>{
 });
 document.getElementById('search').addEventListener('input',e=>{ searchQ=e.target.value; renderGrid(); });
 document.getElementById('modeToggle')?.addEventListener('click',()=> setBuilderMode(!builderMode));
-document.getElementById('addC')?.addEventListener('click',()=>{ if(builderCarbons<6){ if(selectedBuilderIndex>=0 && selectedBuilderIndex < builderCarbons-1){ // insert after selected, keep count but highlight new
- builderCarbons++; selectedBuilderIndex = selectedBuilderIndex+1; } else { builderCarbons++; selectedBuilderIndex = builderCarbons-1; } document.getElementById('bondSel').value=builderBond; renderBuilder();}});
-document.getElementById('removeC')?.addEventListener('click',()=>{ if(builderCarbons>1){ if(selectedBuilderIndex>=0){ builderCarbons--; if(selectedBuilderIndex>=builderCarbons) selectedBuilderIndex=builderCarbons-1; } else { builderCarbons--; } renderBuilder();}});
-document.getElementById('clearC')?.addEventListener('click',()=>{ builderCarbons=1; builderBond='single'; selectedBondIndex=0; selectedBuilderIndex=0; builderFuncGroups={}; const sel=document.getElementById('bondSel'); if(sel) sel.value='single'; const bps=document.getElementById('bondPosSel'); if(bps) bps.value='0'; const fs=document.getElementById('funcSel'); if(fs) fs.value='none'; renderBuilder();});
+document.getElementById('addC')?.addEventListener('click',()=>{ if(builderCarbons<6){ if(selectedBuilderIndex>=0 && selectedBuilderIndex < builderCarbons-1){ builderCarbons++; selectedBuilderIndex = selectedBuilderIndex+1; } else { builderCarbons++; selectedBuilderIndex = builderCarbons-1; } // shift bonds map if inserting in middle
+ const newBonds={}; Object.entries(builderBonds).forEach(([k,v])=>{ const idx=parseInt(k); if(idx>=selectedBuilderIndex) newBonds[idx+1]=v; else newBonds[idx]=v; }); builderBonds=newBonds; document.getElementById('bondSel').value=builderBonds[selectedBondIndex]||'single'; renderBuilder();}});
+document.getElementById('removeC')?.addEventListener('click',()=>{ if(builderCarbons>1){ const removedIdx = selectedBuilderIndex; if(selectedBuilderIndex>=0){ builderCarbons--; if(selectedBuilderIndex>=builderCarbons) selectedBuilderIndex=builderCarbons-1; } else { builderCarbons--; } // clean bonds beyond range and shift
+ const newBonds={}; Object.entries(builderBonds).forEach(([k,v])=>{ const idx=parseInt(k); if(idx===removedIdx || idx> builderCarbons-2) return; if(idx>removedIdx) newBonds[idx-1]=v; else newBonds[idx]=v; }); builderBonds=newBonds; if(selectedBondIndex>=builderCarbons-1) selectedBondIndex=Math.max(0,builderCarbons-2); renderBuilder();}});
+document.getElementById('clearC')?.addEventListener('click',()=>{ builderCarbons=1; builderBond='single'; selectedBondIndex=0; selectedBuilderIndex=0; builderFuncGroups={}; builderBonds={}; const sel=document.getElementById('bondSel'); if(sel) sel.value='single'; const bps=document.getElementById('bondPosSel'); if(bps) bps.value='0'; const fs=document.getElementById('funcSel'); if(fs) fs.value='none'; renderBuilder();});
 document.getElementById('builderResetView')?.addEventListener('click',()=> resetView());
-document.getElementById('bondSel')?.addEventListener('change',e=>{ builderBond=e.target.value; if(builderMode) renderBuilder(); });
-  document.getElementById('bondPosSel')?.addEventListener('change',e=>{ selectedBondIndex=parseInt(e.target.value)||0; if(builderMode) renderBuilder(); });
+document.getElementById('bondSel')?.addEventListener('change',e=>{ builderBond=e.target.value; builderBonds[selectedBondIndex]=e.target.value; if(e.target.value==='single') delete builderBonds[selectedBondIndex]; if(builderMode) renderBuilder(); });
+  document.getElementById('bondPosSel')?.addEventListener('change',e=>{ selectedBondIndex=parseInt(e.target.value)||0; const sel=document.getElementById('bondSel'); if(sel) sel.value=builderBonds[selectedBondIndex]||'single'; builderBond=sel?sel.value:'single'; if(builderMode) renderBuilder(); });
   document.getElementById('addFunc')?.addEventListener('click',()=>{ const sel=document.getElementById('funcSel'); const v=sel?sel.value:'none'; if(v==='none'){ delete builderFuncGroups[selectedBuilderIndex]; } else { builderFuncGroups[selectedBuilderIndex]=v; } renderBuilder(); });
   document.getElementById('removeFunc')?.addEventListener('click',()=>{ delete builderFuncGroups[selectedBuilderIndex]; const sel=document.getElementById('funcSel'); if(sel) sel.value='none'; renderBuilder(); });
 
@@ -1415,7 +1418,7 @@ function updateBuilderUI(){
     for(let i=0;i<n;i++){
       chainHtml+='<span class="chainDot C">C</span>';
       if(i<n-1){
-        let b='—'; if(n===2 && bond==='double') b='='; else if(n===2 && bond==='triple') b='≡';
+        const btype=builderBonds[i]||'single'; let b=btype==='single'?'—': btype==='double'?'=':'≡';
         chainHtml+='<span class="chainBond">'+b+'</span>';
       }
     }
@@ -1428,17 +1431,25 @@ function updateBuilderUI(){
     if(selectedBuilderIndex>=0) selEl.textContent='SEL C'+(selectedBuilderIndex+1)+' /C'+builderCarbons;
     else selEl.textContent='SEL none (click/hand)';
   }
-  // update bond position selector
+  // update bond position selector (multiple bonds)
   const bondPosSel=document.getElementById('bondPosSel');
   if(bondPosSel){
-    const cur=bondPosSel.value;
     bondPosSel.innerHTML='';
     for(let i=0;i<n-1;i++){
-      const opt=document.createElement('option'); opt.value=String(i); opt.textContent='Bond '+(i+1)+' — C'+(i+1)+'—C'+(i+2)+(i===selectedBondIndex ? ' ★':'');
+      const btype=builderBonds[i]||'single';
+      const sym=btype==='single'?'—': btype==='double'?'=':'≡';
+      const opt=document.createElement('option'); opt.value=String(i); opt.textContent='Bond '+(i+1)+' — C'+(i+1)+sym+'C'+(i+2)+' ('+btype+')'+(i===selectedBondIndex ? ' ★':'');
       if(String(i)===String(selectedBondIndex)) opt.selected=true;
       bondPosSel.appendChild(opt);
     }
     if(n<2) { const opt=document.createElement('option'); opt.value='0'; opt.textContent='No bond'; bondPosSel.appendChild(opt); }
+  }
+  // show multiple bonds summary
+  const multiInfo=document.getElementById('multiBondInfo');
+  if(multiInfo){
+    const entries=Object.entries(builderBonds).filter(([k,v])=>v!=='single');
+    if(entries.length===0) multiInfo.textContent='All single';
+    else multiInfo.innerHTML=entries.map(([k,v])=>'Bond '+(parseInt(k)+1)+': '+v).join(' &nbsp;|&nbsp; ');
   }
   const funcTarget=document.getElementById('funcTarget');
   if(funcTarget) funcTarget.textContent=String(selectedBuilderIndex+1);
@@ -1452,8 +1463,8 @@ function updateBuilderUI(){
   if(funcSel && builderFuncGroups[selectedBuilderIndex]) funcSel.value=builderFuncGroups[selectedBuilderIndex];
   if(elLearn){
     if(n===1) elLearn.textContent='Catenation start: 1 carbon has 4 open valencies, all filled by H → methane, tetrahedral.';
-    else if(bond==='double') elLearn.textContent='Alkene: bond '+(selectedBondIndex+1)+' is C=C (double). Carbons at that bond have 1 fewer H. General: CₙH₂ₙ.';
-    else if(bond==='triple') elLearn.textContent='Alkyne: bond '+(selectedBondIndex+1)+' is C≡C (triple). Carbons at that bond have 2 fewer H. General: CₙH₂ₙ₋₂.';
+    else if(Object.entries(builderBonds).filter(([k,v])=>v==='double').length>0 || builderBond==='double') { const ds=Object.entries(builderBonds).filter(([k,v])=>v==='double').map(([k])=>parseInt(k)+1).join(','); elLearn.textContent='Alkene: bond(s) '+(ds|| (selectedBondIndex+1))+' double. Each double loses 1 H per C. Multiple double = polyene.'; }
+    else if(Object.entries(builderBonds).filter(([k,v])=>v==='triple').length>0 || builderBond==='triple') elLearn.textContent='Alkyne: bond(s) '+(Object.entries(builderBonds).filter(([k,v])=>v==='triple').map(([k])=>parseInt(k)+1).join(',')|| (selectedBondIndex+1))+' triple. Each triple loses 2 H per C. Multiple triple = polyyne.';
     else if(Object.keys(builderFuncGroups).length>0) elLearn.textContent='Functional groups replace H: —OH/-Cl/-Br/-NH₂/-CHO/-COOH. Select a C then add group. Valency: 4 bonds per C.';
     else elLearn.textContent='Chain of '+n+' carbons (catenation). Interior C: 2 C–C + 2 C–H, ends: 1 C–C + 3 C–H. Alkane CₙH₂ₙ₊₂. Use Bond Position to make alkene/alkyne anywhere.';
   }
@@ -1474,15 +1485,15 @@ function buildCarbonChain(){
     g.add(cMesh);
     builderCarbonMeshes.push(cMesh);
   }
-  // bonds between carbons — now supports alkene/alkyne at any position
+  // bonds between carbons — supports multiple double/triple bonds
   for(let i=0;i<n-1;i++){
-    const isSpecial = (i===selectedBondIndex);
-    if(!isSpecial || bond==='single') g.add(makeBond(carbons[i], carbons[i+1], false));
-    else if(bond==='double'){
+    const btype = builderBonds[i] || 'single';
+    if(btype==='single') g.add(makeBond(carbons[i], carbons[i+1], false));
+    else if(btype==='double'){
       const off=0.14;
       const a=carbons[i].clone(), b=carbons[i+1].clone(); a.y+=off; b.y+=off; g.add(makeBond(a,b,true));
       const a2=carbons[i].clone(), b2=carbons[i+1].clone(); a2.y-=off; b2.y-=off; g.add(makeBond(a2,b2,true));
-    } else if(bond==='triple'){
+    } else if(btype==='triple'){
       g.add(makeBond(carbons[i], carbons[i+1], false));
       const off=0.14;
       const a=carbons[i].clone(), b=carbons[i+1].clone(); a.y+=off*1.2; b.y+=off*1.2; g.add(makeBond(a,b,true));
@@ -1495,12 +1506,12 @@ function buildCarbonChain(){
     const funcNeeds = hasFunc ? 1 : 0;
     let bondCount = 0;
     if(i>0){
-      const leftIsSpecial = (i-1===selectedBondIndex);
-      bondCount += leftIsSpecial ? (bond==='single'?1: bond==='double'?2:3) : 1;
+      const leftType = builderBonds[i-1] || 'single';
+      bondCount += leftType==='single'?1: leftType==='double'?2:3;
     }
     if(i<n-1){
-      const rightIsSpecial = (i===selectedBondIndex);
-      bondCount += rightIsSpecial ? (bond==='single'?1: bond==='double'?2:3) : 1;
+      const rightType = builderBonds[i] || 'single';
+      bondCount += rightType==='single'?1: rightType==='double'?2:3;
     }
     if(n===1) bondCount=0;
     let needed = 4 - bondCount - funcNeeds;
