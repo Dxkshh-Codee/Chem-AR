@@ -107,6 +107,12 @@
   .chainBond{color:var(--accent);font-weight:700}
   #hybridPanel{display:none;flex-direction:column;gap:10px;padding:12px;overflow:auto}
   #hybridPanel.active{display:flex}
+  .isoCard{border:1px solid var(--line);background:rgba(0,0,0,0.18);border-radius:10px;padding:8px;cursor:pointer;transition:all .15s}
+  .isoCard:hover{border-color:var(--accent);background:rgba(212,162,78,0.08)}
+  .isoCard.active{border-color:var(--accent);background:#2a3f34}
+  .isoHead{font-weight:700;color:var(--chalk);font-size:12px}
+  .isoForm{font-family:Courier New,monospace;font-size:11px;color:var(--accent2)}
+  .isoDesc{font-size:11px;color:var(--dim);margin-top:3px}
   .hybTabs{display:flex;gap:6px;flex-wrap:wrap}
   .hybTab{font-family:Courier New,monospace;font-size:10px;letter-spacing:0.5px;padding:6px 10px;border:1px solid var(--line);background:var(--panel);color:var(--dim);border-radius:999px;cursor:pointer}
   .hybTab.active{background:var(--accent);color:#0f1c18;border-color:var(--accent);font-weight:700}
@@ -279,6 +285,12 @@
               <button id="removeFunc" class="builderBtn">Remove Func</button>
             </div>
             <div id="funcList" style="font-family:Courier New,monospace;font-size:10px;color:var(--dim);margin-top:6px">No functional groups</div>
+          </div>
+          <div class="builderCard">
+            <h4 style="margin:0 0 6px;font-size:13px;color:var(--accent2)">🔀 Isomers of Current Chain</h4>
+            <div style="font-size:11px;color:var(--dim);line-height:1.4">Class 10 — chain, position & functional isomers. Tap to load isomer in builder.</div>
+            <div id="isomerGrid" style="display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px"></div>
+            <div style="font-family:Courier New,monospace;font-size:10px;color:var(--dim);margin-top:6px">Shows valid isomers for current Cₙ + bonds + groups. Valency ≤4 enforced.</div>
           </div>
           <div class="builderRow">
             <button id="builderResetView" class="builderBtn">Reset View</button>
@@ -1628,6 +1640,106 @@ function buildCarbonChain(){
   }
   return g;
 }
+function getIsomerBuilders(){
+  // helper to create branched isobutane geometry
+  function branchedIsobutane(){
+    const g=new THREE.Group();
+    const c0=new THREE.Vector3(0,0,0);
+    g.add(makeAtom('C',c0));
+    const cs=[new THREE.Vector3(-1.15,0.85,0), new THREE.Vector3(1.15,0.85,0), new THREE.Vector3(0,-1.35,0)];
+    cs.forEach(c=>{ g.add(makeAtom('C',c)); g.add(makeBond(c0,c,false));
+      const hs=[new THREE.Vector3(c.x+0.6,c.y+0.5,0.4),new THREE.Vector3(c.x+0.6,c.y+0.5,-0.4),new THREE.Vector3(c.x-0.45,c.y+0.6,0.4)];
+      hs.forEach(h=>{ const hp=new THREE.Vector3(h.x,h.y,h.z); g.add(makeAtom('H',hp)); g.add(makeBond(c,hp,true));});
+    });
+    g.add(makeAtom('H',new THREE.Vector3(0,0.95,0))); g.add(makeBond(c0,new THREE.Vector3(0,0.95,0),true));
+    return g;
+  }
+  function branchedIsopentane(){
+    const g=new THREE.Group();
+    // 2-methylbutane: C1-C2(C3)-C4
+    const c1=new THREE.Vector3(-1.85,0,0), c2=new THREE.Vector3(-0.35,0,0), c3=new THREE.Vector3(0.85,0.85,0), c4=new THREE.Vector3(1.05,-1.05,0);
+    [c1,c2,c3,c4].forEach(c=>g.add(makeAtom('C',c)));
+    g.add(makeBond(c1,c2,false)); g.add(makeBond(c2,c3,false)); g.add(makeBond(c2,c4,false));
+    // hydrogens simplified
+    const addHs=(c, n)=>{ for(let i=0;i<n;i++){ const h=c.clone().add(new THREE.Vector3((Math.random()-0.5)*1.2, (Math.random()-0.5)*1.2, (Math.random()-0.5)*1.2)); g.add(makeAtom('H',h)); g.add(makeBond(c,h,true)); } };
+    return g;
+  }
+  return {branchedIsobutane, branchedIsopentane};
+}
+function generateIsomers(){
+  const n=builderCarbons;
+  const bonds={...builderBonds};
+  const funcs={...builderFuncGroups};
+  const isomers=[];
+  const hasFunc=Object.keys(funcs).length>0;
+  const funcType=Object.values(funcs)[0] || null;
+  // Helper to check valency
+  const check=(nn, bb, ff)=> isValidChain(nn, bb, ff).valid;
+  if(hasFunc && funcType){
+    // position isomers: move func to every valid carbon
+    for(let i=0;i<n;i++){
+      const test={}; test[i]=funcType;
+      if(!check(n, bonds, test)) continue;
+      const posName = n<=3 ? (i===0?'1-': i===1?'2-':'3-') : (i+1)+'-';
+      let base=''; if(n===3) base='Propan'; else if(n===4) base='But'; else if(n===5) base='Pent'; else base='Hex';
+      let suffix=''; if(funcType==='OH') suffix='anol'; else if(funcType==='Cl') suffix='chloro'+base.toLowerCase()+'ane'; else if(funcType==='Br') suffix='bromo'+base.toLowerCase()+'ane'; else if(funcType==='NH2') suffix='amine'; else if(funcType==='CHO') suffix='anal'; else if(funcType==='COOH') suffix='anoic acid'; else suffix=funcType;
+      let name = funcType==='OH' || funcType==='CHO' || funcType==='COOH' ? posName+base+suffix : posName+suffix;
+      // Functional isomer: for C3H8O, alcohol vs ether is functional isomer, but we show position
+      isomers.push({id:'pos'+i, name: name + ' (pos '+ (i+1)+')', formula: 'C'+n+' func', detail:'Functional group at C'+(i+1), apply:()=>{ builderFuncGroups={}; builderFuncGroups[i]=funcType; selectedBuilderIndex=i; renderBuilder(); renderIsomers(); }});
+    }
+    // functional isomer example: for C3H8O, alcohol vs ether
+    if(n===3 && funcType==='OH'){
+      isomers.push({id:'ether', name:'Methyl ethyl ether (functional isomer)', formula:'C3H8O', detail:'Ether vs alcohol', apply:()=>{ showWarn('Functional isomer: CH3-O-C2H5 vs C3H7OH — same formula, different group'); }});
+    }
+  } else {
+    // Check for alkene/alkyne with multiple bonds
+    const hasDouble=Object.values(bonds).includes('double');
+    const hasTriple=Object.values(bonds).includes('triple');
+    if(hasDouble || hasTriple){
+      // position isomers of double bond
+      for(let i=0;i<n-1;i++){
+        const test={...bonds}; // keep existing but move double to i
+        // create single double at i only for isomer preview (keep other bonds single for simplicity)
+        const singleBonds={}; singleBonds[i]= hasTriple?'triple':'double';
+        if(!check(n, singleBonds, {})) continue;
+        const name = hasTriple ? (i+1)+'-'+ (n===3?'Propyne': n===4?'Butyne':'Pentyne') : (i+1)+'-'+ (n===3?'Propene': n===4?'Butene':'Pentene');
+        isomers.push({id:'bond'+i, name: name+' (double at '+(i+1)+')', formula:'C'+n+'H'+(hasTriple?2*n-2:2*n), detail:'Bond '+(i+1)+' is '+(hasTriple?'≡':'='), apply:()=>{ builderBonds={}; builderBonds[i]= hasTriple?'triple':'double'; selectedBondIndex=i; renderBuilder(); renderIsomers(); }});
+      }
+    }
+    // chain isomers for alkanes
+    if(!hasDouble && !hasTriple && !hasFunc){
+      if(n===4){
+        isomers.push({id:'n-butane', name:'n-Butane', formula:'C₄H₁₀', detail:'Straight chain', apply:()=>{ builderCarbons=4; builderBonds={}; builderFuncGroups={}; renderBuilder(); renderIsomers(); }});
+        isomers.push({id:'iso-butane', name:'Isobutane (2-Methylpropane)', formula:'C₄H₁₀', detail:'Branched chain isomer', apply:()=>{ builderCarbons=4; builderBonds={}; builderFuncGroups={}; selectedBuilderIndex=0; renderBuilder(); // show branched preview as highlight
+          // override 3D with branched geometry temporarily
+          while(molGroup.children.length) molGroup.remove(molGroup.children[0]); labeledAtoms=[]; molGroup.add(getIsomerBuilders().branchedIsobutane()); updateBuilderUI(); showWarn('Branched isomer preview: C-C-C branched'); }});
+      } else if(n===5){
+        isomers.push({id:'n-pent', name:'n-Pentane', formula:'C₅H₁₂', detail:'Straight', apply:()=>{ builderCarbons=5; builderBonds={}; renderBuilder(); renderIsomers(); }});
+        isomers.push({id:'iso-pent', name:'Isopentane (2-Methylbutane)', formula:'C₅H₁₂', detail:'Branched', apply:()=>{ while(molGroup.children.length) molGroup.remove(molGroup.children[0]); labeledAtoms=[]; molGroup.add(getIsomerBuilders().branchedIsopentane()); showWarn('Branched isomer preview'); }});
+        isomers.push({id:'neo-pent', name:'Neopentane (2,2-Dimethylpropane)', formula:'C₅H₁₂', detail:'Highly branched', apply:()=>{ showWarn('Neopentane: central C with 4 methyls — tetrahedral'); }});
+      } else if(n===3){
+        isomers.push({id:'propane', name:'Propane', formula:'C₃H₈', detail:'Only one chain isomer', apply:()=>{}});
+      }
+    }
+  }
+  // Always add general chain vs branched note if no isomers
+  if(isomers.length===0){
+    isomers.push({id:'none', name:'No additional isomers', formula:'—', detail:'Try C₄+ alkane or add functional group / double bond to see isomers', apply:()=>{}});
+  }
+  return isomers;
+}
+function renderIsomers(){
+  const grid=document.getElementById('isomerGrid'); if(!grid) return;
+  const isomers=generateIsomers();
+  grid.innerHTML='';
+  isomers.forEach(it=>{
+    const card=document.createElement('div'); card.className='isoCard';
+    card.innerHTML='<div class="isoHead">'+it.name+'</div><div class="isoForm">'+it.formula+'</div><div class="isoDesc">'+it.detail+'</div>';
+    card.addEventListener('click', ()=>{ it.apply(); renderIsomers(); });
+    grid.appendChild(card);
+  });
+}
+
 function renderBuilder(){
   if(!builderMode) return;
   if(selectedBuilderIndex>=builderCarbons) selectedBuilderIndex=builderCarbons-1;
@@ -1636,6 +1748,7 @@ function renderBuilder(){
   labeledAtoms=[];
   molGroup.add(buildCarbonChain());
   updateBuilderUI();
+  renderIsomers();
   // update overlay info
   const ovN=document.getElementById('ovName'), ovF=document.getElementById('ovForm'), ovM=document.getElementById('ovMeta');
   let formula='', name='';
@@ -1755,7 +1868,7 @@ function setBuilderMode(on){
     if(rightHead) rightHead.style.display='none';
     if(search) search.style.display='none';
     if(tabs) tabs.style.display='none';
-    renderBuilder();
+    renderBuilder(); renderIsomers();
     const hint=document.getElementById('gestureHint');
     if(hint) hint.innerHTML='<b>BUILDER MODE</b><br><b>Single pinch</b> = +1 C<br><b>Double pinch</b> = −1 C<br><b>Open palm</b> = no auto clear (use Clear button)<br><b>Move</b> = rotate<br><b>Pinch hold</b> = zoom (inverted)';
   } else {
