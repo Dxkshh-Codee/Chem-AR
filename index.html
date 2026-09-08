@@ -245,16 +245,38 @@
           <div id="builderLearn" style="margin-top:8px;font-size:12px;color:var(--dim);line-height:1.5;background:rgba(212,162,78,0.08);border:1px solid rgba(212,162,78,0.18);border-radius:8px;padding:8px">Catenation: carbon forms 4 bonds. With 1 C, all 4 are C–H.</div>
         </div>
         <div class="builderCard">
-          <label style="font-family:Courier New,monospace;font-size:11px;color:var(--dim)">BOND TYPE (for C₂)</label>
+          <label style="font-family:Courier New,monospace;font-size:11px;color:var(--dim)">BOND TYPE</label>
           <select id="bondSel" class="bondSel">
             <option value="single">Single — C–C (alkane)</option>
             <option value="double">Double — C=C (alkene)</option>
             <option value="triple">Triple — C≡C (alkyne)</option>
           </select>
+          <label style="font-family:Courier New,monospace;font-size:11px;color:var(--dim);margin-top:8px;display:block">BOND POSITION (for chain ≥2)</label>
+          <select id="bondPosSel" class="bondSel">
+            <option value="0">Bond 1 — C1—C2</option>
+          </select>
+          <div style="font-family:Courier New,monospace;font-size:10px;color:var(--dim);margin-top:4px">Alkene/alkyne now works for any length: select which C–C bond is double/triple.</div>
           <div class="builderRow">
             <button id="addC" class="builderBtn primary">+ Add C</button>
             <button id="removeC" class="builderBtn">− Remove C</button>
             <button id="clearC" class="builderBtn">Clear</button>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+            <label style="font-family:Courier New,monospace;font-size:11px;color:var(--dim)">FUNCTIONAL GROUP (on selected C)</label>
+            <select id="funcSel" class="bondSel">
+              <option value="none">None — hydrocarbon</option>
+              <option value="OH">—OH (alcohol)</option>
+              <option value="Cl">—Cl (chloro)</option>
+              <option value="Br">—Br (bromo)</option>
+              <option value="NH2">—NH₂ (amine)</option>
+              <option value="CHO">—CHO (aldehyde)</option>
+              <option value="COOH">—COOH (carboxylic acid)</option>
+            </select>
+            <div class="builderRow">
+              <button id="addFunc" class="builderBtn primary">Add to C<span id="funcTarget">1</span></button>
+              <button id="removeFunc" class="builderBtn">Remove Func</button>
+            </div>
+            <div id="funcList" style="font-family:Courier New,monospace;font-size:10px;color:var(--dim);margin-top:6px">No functional groups</div>
           </div>
           <div class="builderRow">
             <button id="builderResetView" class="builderBtn">Reset View</button>
@@ -1293,7 +1315,9 @@ let searchQ='';
 let builderMode=false;
 let builderCarbons=1;
 let builderBond='single';
-let selectedBuilderIndex=-1;
+let selectedBuilderIndex=0;
+let selectedBondIndex=0;
+let builderFuncGroups={}; // idx -> 'OH'|'Cl'|... 
 let hybridMode=false;
 let hybridFilter='all';
 let builderCarbonMeshes=[];
@@ -1356,9 +1380,12 @@ document.getElementById('modeToggle')?.addEventListener('click',()=> setBuilderM
 document.getElementById('addC')?.addEventListener('click',()=>{ if(builderCarbons<6){ if(selectedBuilderIndex>=0 && selectedBuilderIndex < builderCarbons-1){ // insert after selected, keep count but highlight new
  builderCarbons++; selectedBuilderIndex = selectedBuilderIndex+1; } else { builderCarbons++; selectedBuilderIndex = builderCarbons-1; } document.getElementById('bondSel').value=builderBond; renderBuilder();}});
 document.getElementById('removeC')?.addEventListener('click',()=>{ if(builderCarbons>1){ if(selectedBuilderIndex>=0){ builderCarbons--; if(selectedBuilderIndex>=builderCarbons) selectedBuilderIndex=builderCarbons-1; } else { builderCarbons--; } renderBuilder();}});
-document.getElementById('clearC')?.addEventListener('click',()=>{ builderCarbons=1; builderBond='single'; const sel=document.getElementById('bondSel'); if(sel) sel.value='single'; renderBuilder();});
+document.getElementById('clearC')?.addEventListener('click',()=>{ builderCarbons=1; builderBond='single'; selectedBondIndex=0; selectedBuilderIndex=0; builderFuncGroups={}; const sel=document.getElementById('bondSel'); if(sel) sel.value='single'; const bps=document.getElementById('bondPosSel'); if(bps) bps.value='0'; const fs=document.getElementById('funcSel'); if(fs) fs.value='none'; renderBuilder();});
 document.getElementById('builderResetView')?.addEventListener('click',()=> resetView());
 document.getElementById('bondSel')?.addEventListener('change',e=>{ builderBond=e.target.value; if(builderMode) renderBuilder(); });
+  document.getElementById('bondPosSel')?.addEventListener('change',e=>{ selectedBondIndex=parseInt(e.target.value)||0; if(builderMode) renderBuilder(); });
+  document.getElementById('addFunc')?.addEventListener('click',()=>{ const sel=document.getElementById('funcSel'); const v=sel?sel.value:'none'; if(v==='none'){ delete builderFuncGroups[selectedBuilderIndex]; } else { builderFuncGroups[selectedBuilderIndex]=v; } renderBuilder(); });
+  document.getElementById('removeFunc')?.addEventListener('click',()=>{ delete builderFuncGroups[selectedBuilderIndex]; const sel=document.getElementById('funcSel'); if(sel) sel.value='none'; renderBuilder(); });
 
 
 // ---------- BUILDER MODE ----------
@@ -1401,12 +1428,34 @@ function updateBuilderUI(){
     if(selectedBuilderIndex>=0) selEl.textContent='SEL C'+(selectedBuilderIndex+1)+' /C'+builderCarbons;
     else selEl.textContent='SEL none (click/hand)';
   }
+  // update bond position selector
+  const bondPosSel=document.getElementById('bondPosSel');
+  if(bondPosSel){
+    const cur=bondPosSel.value;
+    bondPosSel.innerHTML='';
+    for(let i=0;i<n-1;i++){
+      const opt=document.createElement('option'); opt.value=String(i); opt.textContent='Bond '+(i+1)+' — C'+(i+1)+'—C'+(i+2)+(i===selectedBondIndex ? ' ★':'');
+      if(String(i)===String(selectedBondIndex)) opt.selected=true;
+      bondPosSel.appendChild(opt);
+    }
+    if(n<2) { const opt=document.createElement('option'); opt.value='0'; opt.textContent='No bond'; bondPosSel.appendChild(opt); }
+  }
+  const funcTarget=document.getElementById('funcTarget');
+  if(funcTarget) funcTarget.textContent=String(selectedBuilderIndex+1);
+  const funcList=document.getElementById('funcList');
+  if(funcList){
+    const entries=Object.entries(builderFuncGroups);
+    if(entries.length===0) funcList.textContent='No functional groups';
+    else funcList.innerHTML=entries.map(([k,v])=>'C'+(parseInt(k)+1)+': —'+v).join(' &nbsp;|&nbsp; ');
+  }
+  const funcSel=document.getElementById('funcSel');
+  if(funcSel && builderFuncGroups[selectedBuilderIndex]) funcSel.value=builderFuncGroups[selectedBuilderIndex];
   if(elLearn){
     if(n===1) elLearn.textContent='Catenation start: 1 carbon has 4 open valencies, all filled by H → methane, tetrahedral.';
-    else if(n===2 && bond==='single') elLearn.textContent='2 carbons single-bonded: each C shares 1 bond with neighbor, remaining 3 valencies each → 6 H. Saturated alkane.';
-    else if(n===2 && bond==='double') elLearn.textContent='Double bond: each C shares 2 bonds with neighbor, leaving 2 valencies each → 4 H. Unsaturated alkene, planar.';
-    else if(n===2 && bond==='triple') elLearn.textContent='Triple bond: each C shares 3 bonds, leaving 1 valency each → 2 H. Linear alkyne.';
-    else elLearn.textContent='Chain of '+n+' carbons (catenation). Each interior C has 2 C–C bonds + 2 C–H, ends have 1 C–C + 3 C–H. General alkane CₙH₂ₙ₊₂.';
+    else if(bond==='double') elLearn.textContent='Alkene: bond '+(selectedBondIndex+1)+' is C=C (double). Carbons at that bond have 1 fewer H. General: CₙH₂ₙ.';
+    else if(bond==='triple') elLearn.textContent='Alkyne: bond '+(selectedBondIndex+1)+' is C≡C (triple). Carbons at that bond have 2 fewer H. General: CₙH₂ₙ₋₂.';
+    else if(Object.keys(builderFuncGroups).length>0) elLearn.textContent='Functional groups replace H: —OH/-Cl/-Br/-NH₂/-CHO/-COOH. Select a C then add group. Valency: 4 bonds per C.';
+    else elLearn.textContent='Chain of '+n+' carbons (catenation). Interior C: 2 C–C + 2 C–H, ends: 1 C–C + 3 C–H. Alkane CₙH₂ₙ₊₂. Use Bond Position to make alkene/alkyne anywhere.';
   }
 }
 function buildCarbonChain(){
@@ -1415,45 +1464,47 @@ function buildCarbonChain(){
   const spacing=1.55;
   const carbons=[];
   builderCarbonMeshes=[];
+  // clamp bond position
+  if(selectedBondIndex >= n-1) selectedBondIndex = Math.max(0, n-2);
   for(let i=0;i<n;i++){
     const pos=new THREE.Vector3((i-(n-1)/2)*spacing, 0, 0);
     carbons.push(pos);
     const cMesh=makeAtom('C', pos);
-    // highlight selected
     if(i===selectedBuilderIndex){ cMesh.material = cMesh.material.clone(); cMesh.material.emissive = new THREE.Color(0xd4a24e); cMesh.material.emissiveIntensity=0.55; }
     g.add(cMesh);
     builderCarbonMeshes.push(cMesh);
   }
-  // bonds between carbons
+  // bonds between carbons — now supports alkene/alkyne at any position
   for(let i=0;i<n-1;i++){
-    const isSpecial = (n===2 && i===0);
-    if(isSpecial && bond==='single') g.add(makeBond(carbons[i], carbons[i+1], false));
-    else if(isSpecial && (bond==='double' || bond==='triple')){
-      // represent double/triple as two/three parallel bonds offset in Y
+    const isSpecial = (i===selectedBondIndex);
+    if(!isSpecial || bond==='single') g.add(makeBond(carbons[i], carbons[i+1], false));
+    else if(bond==='double'){
       const off=0.14;
-      if(bond==='double'){
-        const a=carbons[i].clone(), b=carbons[i+1].clone(); a.y+=off; b.y+=off; g.add(makeBond(a,b,true));
-        const a2=carbons[i].clone(), b2=carbons[i+1].clone(); a2.y-=off; b2.y-=off; g.add(makeBond(a2,b2,true));
-      } else {
-        g.add(makeBond(carbons[i], carbons[i+1], false));
-        const a=carbons[i].clone(), b=carbons[i+1].clone(); a.y+=off*1.2; b.y+=off*1.2; g.add(makeBond(a,b,true));
-        const a2=carbons[i].clone(), b2=carbons[i+1].clone(); a2.y-=off*1.2; b2.y-=off*1.2; g.add(makeBond(a2,b2,true));
-      }
-    } else {
+      const a=carbons[i].clone(), b=carbons[i+1].clone(); a.y+=off; b.y+=off; g.add(makeBond(a,b,true));
+      const a2=carbons[i].clone(), b2=carbons[i+1].clone(); a2.y-=off; b2.y-=off; g.add(makeBond(a2,b2,true));
+    } else if(bond==='triple'){
       g.add(makeBond(carbons[i], carbons[i+1], false));
+      const off=0.14;
+      const a=carbons[i].clone(), b=carbons[i+1].clone(); a.y+=off*1.2; b.y+=off*1.2; g.add(makeBond(a,b,true));
+      const a2=carbons[i].clone(), b2=carbons[i+1].clone(); a2.y-=off*1.2; b2.y-=off*1.2; g.add(makeBond(a2,b2,true));
     }
   }
-  // hydrogens: compute needed per carbon
+  // hydrogens: compute needed per carbon (accounting for double/triple at selected bond and functional groups)
   for(let i=0;i<n;i++){
-    let needed;
-    if(n===1) needed=4;
-    else if(n===2){
-      if(bond==='single') needed=3;
-      else if(bond==='double') needed=2;
-      else needed=1;
-    } else {
-      if(i===0 || i===n-1) needed=3; else needed=2;
+    const hasFunc = !!builderFuncGroups[i];
+    const funcNeeds = hasFunc ? 1 : 0;
+    let bondCount = 0;
+    if(i>0){
+      const leftIsSpecial = (i-1===selectedBondIndex);
+      bondCount += leftIsSpecial ? (bond==='single'?1: bond==='double'?2:3) : 1;
     }
+    if(i<n-1){
+      const rightIsSpecial = (i===selectedBondIndex);
+      bondCount += rightIsSpecial ? (bond==='single'?1: bond==='double'?2:3) : 1;
+    }
+    if(n===1) bondCount=0;
+    let needed = 4 - bondCount - funcNeeds;
+    if(needed<0) needed=0;
     const base=carbons[i];
     const dirs=[];
     if(needed===4) dirs.push(new THREE.Vector3(0.85,0.85,0.85), new THREE.Vector3(-0.85,0.85,-0.85), new THREE.Vector3(0.85,-0.85,-0.85), new THREE.Vector3(-0.85,-0.85,0.85));
@@ -1465,6 +1516,43 @@ function buildCarbonChain(){
       g.add(makeAtom('H', hPos));
       g.add(makeBond(base, hPos, true));
     });
+    // functional group on this carbon
+    const fg = builderFuncGroups[i];
+    if(fg){
+      if(fg==='OH'){
+        const oPos=base.clone().add(new THREE.Vector3(0,1.35,0));
+        const ho=new THREE.Vector3(oPos.x+0.55, oPos.y+0.35,0);
+        g.add(makeAtom('O', oPos)); g.add(makeBond(base, oPos, false));
+        g.add(makeAtom('H', ho)); g.add(makeBond(oPos, ho, true));
+      } else if(fg==='Cl'){
+        const clPos=base.clone().add(new THREE.Vector3(0,1.45,0));
+        g.add(makeAtom('Cl', clPos)); g.add(makeBond(base, clPos, false));
+      } else if(fg==='Br'){
+        const brPos=base.clone().add(new THREE.Vector3(0,1.55,0));
+        g.add(makeAtom('Br', brPos)); g.add(makeBond(base, brPos, false));
+      } else if(fg==='NH2'){
+        const nPos=base.clone().add(new THREE.Vector3(0,1.35,0));
+        g.add(makeAtom('N', nPos)); g.add(makeBond(base, nPos, false));
+        const h1=nPos.clone().add(new THREE.Vector3(0.55,0.6,0)), h2=nPos.clone().add(new THREE.Vector3(-0.55,0.6,0));
+        g.add(makeAtom('H',h1)); g.add(makeBond(nPos,h1,true)); g.add(makeAtom('H',h2)); g.add(makeBond(nPos,h2,true));
+      } else if(fg==='CHO'){
+        const cA=base.clone().add(new THREE.Vector3(0,1.45,0));
+        const oA=cA.clone().add(new THREE.Vector3(0.65,0.55,0));
+        const hA=cA.clone().add(new THREE.Vector3(-0.45,-0.65,0));
+        g.add(makeAtom('C', cA)); g.add(makeBond(base, cA, false));
+        g.add(makeAtom('O', oA)); g.add(makeBond(cA, oA, false));
+        g.add(makeAtom('H', hA)); g.add(makeBond(cA, hA, true));
+      } else if(fg==='COOH'){
+        const cA=base.clone().add(new THREE.Vector3(0,1.45,0));
+        const oD=cA.clone().add(new THREE.Vector3(0.65,0.65,0));
+        const oH=cA.clone().add(new THREE.Vector3(-0.65,0.65,0));
+        const ho=oH.clone().add(new THREE.Vector3(-0.55,0.55,0));
+        g.add(makeAtom('C', cA)); g.add(makeBond(base, cA, false));
+        g.add(makeAtom('O', oD)); g.add(makeBond(cA, oD, false));
+        g.add(makeAtom('O', oH)); g.add(makeBond(cA, oH, false));
+        g.add(makeAtom('H', ho)); g.add(makeBond(oH, ho, true));
+      }
+    }
   }
   return g;
 }
@@ -1492,6 +1580,7 @@ function renderBuilder(){
 function selectBuilderCarbon(idx){
   if(idx<0 || idx>=builderCarbons) return;
   selectedBuilderIndex=idx;
+  const fs=document.getElementById('funcSel'); if(fs) fs.value=builderFuncGroups[idx]||'none';
   renderBuilder();
 }
 function raycastSelectFromNDC(ndcX, ndcY){
